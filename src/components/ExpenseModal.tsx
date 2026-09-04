@@ -88,7 +88,7 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({
         categoryId,
         date,
         paymentMethod,
-        notes: notes.trim() ? notes.trim() : undefined,
+        notes: notes.trim(),
       },
       editingExpense ? editingExpense.id : undefined
     );
