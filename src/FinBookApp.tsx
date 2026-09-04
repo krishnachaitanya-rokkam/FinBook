@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, X, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
 import { getDefaultBudgetsForMonth } from './data/initialData';
 import { CATEGORY_MAP, PAYMENT_METHOD_LABELS } from './data/categories';
@@ -19,6 +19,7 @@ import { subscribeToPortfolio, savePortfolio, DEFAULT_PORTFOLIO_FIELDS, Portfoli
 import { logoutUser } from './services/authService';
 
 type Section = 'cashflow' | 'portfolio';
+type CashFlowView = 'overview' | 'budgets' | 'analytics' | 'transactions';
 
 export default function FinBookApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -28,6 +29,7 @@ export default function FinBookApp() {
   const [portfolio, setPortfolio] = useState<PortfolioConfig>({ fields: DEFAULT_PORTFOLIO_FIELDS });
   const [month, setMonth] = useState(getCurrentMonthKey());
   const [section, setSection] = useState<Section>('cashflow');
+  const [cashFlowView, setCashFlowView] = useState<CashFlowView>('overview');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
@@ -105,6 +107,11 @@ export default function FinBookApp() {
   const navigate = (nextSection: Section) => {
     setSection(nextSection);
     setMobileNavOpen(false);
+  };
+
+  const selectCashFlowView = (view: CashFlowView) => {
+    setSection('cashflow');
+    setCashFlowView(view);
   };
 
   const save = async (data: Omit<Expense, 'id'|'createdAt'>, id?: string) => {
@@ -255,6 +262,13 @@ export default function FinBookApp() {
     </aside>
   );
 
+  const cashFlowTabs = [
+    { id: 'overview' as CashFlowView, label: 'Overview', icon: TrendingUp },
+    { id: 'budgets' as CashFlowView, label: 'Budgets', icon: Target },
+    { id: 'analytics' as CashFlowView, label: 'Analytics', icon: PieChart },
+    { id: 'transactions' as CashFlowView, label: `Transactions (${monthExpenses.length})`, icon: Receipt },
+  ];
+
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <div className="hidden md:block fixed left-0 top-0 bottom-0 z-40">{sidebar()}</div>
     {mobileNavOpen && <>
@@ -286,33 +300,43 @@ export default function FinBookApp() {
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
         {section==='cashflow' && <>
-          <section id="overview" className="bg-white rounded-2xl border p-5">
+          <div className="bg-white rounded-2xl border p-2 flex flex-wrap gap-2">
+            {cashFlowTabs.map(tab => {
+              const Icon = tab.icon;
+              const active = cashFlowView === tab.id;
+              return <button key={tab.id} onClick={()=>selectCashFlowView(tab.id)} className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition ${active?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:bg-slate-50'}`}>
+                <Icon className="h-4 w-4" />{tab.label}
+              </button>;
+            })}
+          </div>
+
+          {cashFlowView==='overview' && <section className="bg-white rounded-2xl border p-5">
             <h2 className="font-bold mb-1">Financial Overview</h2>
             <p className="text-sm text-slate-500 mb-5">Real data for {formatMonthKeyToName(month)}</p>
             <MetricCards totalSpent={alerts.totalSpent} totalBudget={alerts.totalBudget} monthKey={month} transactionCount={monthExpenses.length}/>
-          </section>
+          </section>}
 
-          <section id="budgets" className="bg-white rounded-2xl border p-5">
+          {cashFlowView==='budgets' && <section className="bg-white rounded-2xl border p-5">
             <div className="flex justify-between items-center mb-5 gap-3">
               <div><h2 className="font-bold">Budgets & Limits</h2><p className="text-sm text-slate-500">Set your own monthly spending limits.</p></div>
               <button onClick={()=>setBudgetModal(true)} className="border rounded-lg px-3 py-2 text-sm font-semibold whitespace-nowrap">Edit budgets</button>
             </div>
             <BudgetProgressList alerts={alerts.alerts} onOpenBudgetModal={()=>setBudgetModal(true)} selectedCategory={filter} onSelectCategory={setFilter}/>
-          </section>
+          </section>}
 
-          <section id="analytics" className="bg-white rounded-2xl border p-5">
+          {cashFlowView==='analytics' && <section className="bg-white rounded-2xl border p-5">
             <h2 className="font-bold mb-1">Spending Analytics</h2>
             <p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions.</p>
             <ExpenseCharts currentMonthExpenses={monthExpenses} allExpenses={expenses} monthKey={month} budgetConfig={budget}/>
-          </section>
+          </section>}
 
-          <section id="transactions" className="bg-white rounded-2xl border p-5">
+          {cashFlowView==='transactions' && <section className="bg-white rounded-2xl border p-5">
             <div className="flex justify-between items-center mb-5 gap-3">
               <div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records.</p></div>
               <div className="flex gap-2 shrink-0"><button onClick={exportCsv} className="border rounded-lg px-3 py-2 text-sm font-semibold">Export CSV</button><button onClick={()=>{setEditing(null);setModal(true)}} className="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm font-semibold">Add transaction</button></div>
             </div>
             <ExpenseList expenses={filter?monthExpenses.filter(e=>e.categoryId===filter):monthExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/>
-          </section>
+          </section>}
         </>}
 
         {section==='portfolio' && <PortfolioManager config={portfolio} onSave={saveP}/>} 
