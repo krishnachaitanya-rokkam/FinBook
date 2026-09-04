@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
@@ -30,6 +30,7 @@ export default function FinBookApp() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const monthPickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let unsubscribeData = () => {};
@@ -150,6 +151,17 @@ export default function FinBookApp() {
     setFilter(null);
   };
 
+  const openMonthPicker = () => {
+    const picker = monthPickerRef.current;
+    if (!picker) return;
+    try {
+      if (typeof picker.showPicker === 'function') picker.showPicker();
+      else picker.focus();
+    } catch {
+      picker.focus();
+    }
+  };
+
   const handleMonthPickerChange = (value: string) => {
     if (!/^\d{4}-\d{2}$/.test(value)) return;
     setMonth(value);
@@ -182,11 +194,11 @@ export default function FinBookApp() {
       <div className="flex items-center gap-3 min-w-0"><div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0"><IndianRupee className="h-5 w-5"/></div><div className="min-w-0"><b className="text-lg">FinBook</b><p className="text-xs text-slate-500 truncate">Personal money manager</p></div></div>
       <div className="flex items-center gap-2 shrink-0">
         <button onClick={()=>shiftMonth(-1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Previous month"><ChevronLeft className="h-4 w-4"/></button>
-        <label className="relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 hover:bg-slate-100 cursor-pointer min-w-28 justify-center" title="Choose month">
-          <Calendar className="h-4 w-4 text-slate-500"/>
+        <button type="button" onClick={openMonthPicker} className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 cursor-pointer min-w-28 justify-center border border-transparent hover:border-slate-200" title="Choose month" aria-label={`Choose month, currently ${formatMonthKeyToName(month)}`}>
+          <Calendar className="h-4 w-4 text-slate-500 shrink-0"/>
           <span className="text-sm font-semibold text-center pointer-events-none">{formatMonthKeyToName(month)}</span>
-          <input type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
-        </label>
+          <input ref={monthPickerRef} type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute pointer-events-none opacity-0 w-px h-px" tabIndex={-1} />
+        </button>
         <button onClick={()=>shiftMonth(1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Next month"><ChevronRight className="h-4 w-4"/></button>
         <button onClick={()=>{setEditing(null);setModal(true)}} className="ml-2 flex items-center gap-1.5 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold"><Plus className="h-4 w-4"/><span>Add</span></button>
         <button onClick={()=>logoutUser()} title="Sign out" aria-label="Sign out" className="p-2 rounded-lg border border-slate-200"><LogOut className="h-4 w-4"/></button>
