@@ -1,0 +1,6 @@
+{
+  "name": "FinBook",
+  "description": "Track expenses, visualize monthly spending patterns, manage category budget alerts, and sync data with Supabase database.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
