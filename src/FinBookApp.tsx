@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards } from 'lucide-react';
+import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, X, ChevronDown } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
 import { getDefaultBudgetsForMonth } from './data/initialData';
 import { CATEGORY_MAP, PAYMENT_METHOD_LABELS } from './data/categories';
@@ -28,6 +28,8 @@ export default function FinBookApp() {
   const [portfolio, setPortfolio] = useState<PortfolioConfig>({ fields: DEFAULT_PORTFOLIO_FIELDS });
   const [month, setMonth] = useState(getCurrentMonthKey());
   const [section, setSection] = useState<Section>('overview');
+  const [cashFlowOpen, setCashFlowOpen] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [budgetModal, setBudgetModal] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -96,6 +98,11 @@ export default function FinBookApp() {
   const alerts = useMemo(() => computeCategoryAlerts(monthExpenses, budget), [monthExpenses, budget]);
 
   const toast = (text: string) => { setMessage(text); window.setTimeout(() => setMessage(''), 3000); };
+
+  const navigate = (nextSection: Section) => {
+    setSection(nextSection);
+    setMobileNavOpen(false);
+  };
 
   const save = async (data: Omit<Expense, 'id'|'createdAt'>, id?: string) => {
     if (!user) return;
@@ -216,31 +223,73 @@ export default function FinBookApp() {
     URL.revokeObjectURL(url);
   };
 
-  return <div className="min-h-screen bg-slate-50 text-slate-900">
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200"><div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3 min-w-0"><div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0"><IndianRupee className="h-5 w-5"/></div><div className="min-w-0"><b className="text-lg">FinBook</b><p className="text-xs text-slate-500 truncate">Personal money manager</p></div></div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button onClick={()=>shiftMonth(-1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Previous month"><ChevronLeft className="h-4 w-4"/></button>
-        <button type="button" onClick={openMonthPicker} className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 cursor-pointer min-w-28 justify-center border border-transparent hover:border-slate-200" title="Choose month" aria-label={`Choose month, currently ${formatMonthKeyToName(month)}`}>
-          <Calendar className="h-4 w-4 text-slate-500 shrink-0"/>
-          <span className="text-sm font-semibold text-center pointer-events-none">{formatMonthKeyToName(month)}</span>
-          <input ref={monthPickerRef} type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute pointer-events-none opacity-0 w-px h-px" tabIndex={-1} />
-        </button>
-        <button onClick={()=>shiftMonth(1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Next month"><ChevronRight className="h-4 w-4"/></button>
-        <button onClick={()=>{setEditing(null);setModal(true)}} className="ml-2 flex items-center gap-1.5 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold"><Plus className="h-4 w-4"/><span>Add</span></button>
-        <button onClick={()=>logoutUser()} title="Sign out" aria-label="Sign out" className="p-2 rounded-lg border border-slate-200"><LogOut className="h-4 w-4"/></button>
+  const navItems = [
+    { id: 'overview' as Section, label: 'Overview', icon: TrendingUp },
+    { id: 'budgets' as Section, label: 'Budgets', icon: Target },
+    { id: 'analytics' as Section, label: 'Analytics', icon: PieChart },
+    { id: 'transactions' as Section, label: `Transactions (${monthExpenses.length})`, icon: Receipt },
+  ];
+
+  const sidebar = (
+    <aside className="h-full w-64 bg-white border-r border-slate-200 px-3 py-5 flex flex-col shadow-sm">
+      <div className="px-3 pb-5 mb-2 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shrink-0"><IndianRupee className="h-5 w-5"/></div>
+          <div className="min-w-0"><b className="text-lg">FinBook</b><p className="text-xs text-slate-500 truncate">Personal money manager</p></div>
+        </div>
       </div>
-    </div></header>
-    <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-      <div className="flex flex-wrap gap-2"><button onClick={()=>setSection('overview')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='overview'?'bg-slate-900 text-white':'bg-white border'}`}><TrendingUp className="inline h-4 w-4 mr-1"/>Overview</button><button onClick={()=>setSection('budgets')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='budgets'?'bg-slate-900 text-white':'bg-white border'}`}><Target className="inline h-4 w-4 mr-1"/>Budgets</button><button onClick={()=>setSection('portfolio')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='portfolio'?'bg-slate-900 text-white':'bg-white border'}`}><WalletCards className="inline h-4 w-4 mr-1"/>Portfolio</button><button onClick={()=>setSection('analytics')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='analytics'?'bg-slate-900 text-white':'bg-white border'}`}><PieChart className="inline h-4 w-4 mr-1"/>Analytics</button><button onClick={()=>setSection('transactions')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='transactions'?'bg-slate-900 text-white':'bg-white border'}`}><Receipt className="inline h-4 w-4 mr-1"/>Transactions ({monthExpenses.length})</button></div>
-      {section==='overview' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Financial Overview</h2><p className="text-sm text-slate-500 mb-5">Real data for {formatMonthKeyToName(month)}</p><MetricCards totalSpent={alerts.totalSpent} totalBudget={alerts.totalBudget} monthKey={month} transactionCount={monthExpenses.length}/></section>}
-      {section==='budgets' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Budgets & Limits</h2><p className="text-sm text-slate-500">Set your own monthly spending limits.</p></div><button onClick={()=>setBudgetModal(true)} className="border rounded-lg px-3 py-2 text-sm font-semibold">Edit budgets</button></div><BudgetProgressList alerts={alerts.alerts} onOpenBudgetModal={()=>setBudgetModal(true)} selectedCategory={filter} onSelectCategory={setFilter}/></section>}
-      {section==='portfolio' && <PortfolioManager config={portfolio} onSave={saveP}/>} 
-      {section==='analytics' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Spending Analytics</h2><p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions.</p><ExpenseCharts currentMonthExpenses={monthExpenses} allExpenses={expenses} monthKey={month} budgetConfig={budget}/></section>}
-      {section==='transactions' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records.</p></div><div className="flex gap-2"><button onClick={exportCsv} className="border rounded-lg px-3 py-2 text-sm font-semibold">Export CSV</button><button onClick={()=>{setEditing(null);setModal(true)}} className="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm font-semibold">Add transaction</button></div></div><ExpenseList expenses={filter?monthExpenses.filter(e=>e.categoryId===filter):monthExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/></section>}
-    </main>
-    {message && <div className="fixed bottom-5 right-5 bg-slate-900 text-white rounded-xl px-4 py-3 text-sm shadow-xl max-w-sm">{message}</div>}
-    <ExpenseModal isOpen={modal} onClose={()=>{setModal(false);setEditing(null)}} onSave={save} editingExpense={editing} defaultDate={getTodayDateString()}/>
-    <BudgetManagerModal isOpen={budgetModal} onClose={()=>setBudgetModal(false)} currentBudgetConfig={budget} onSaveBudgets={saveB} monthName={formatMonthKeyToName(month)}/>
+      <nav className="space-y-1">
+        <button onClick={()=>setCashFlowOpen(v=>!v)} className={`w-full flex items-center justify-between rounded-xl px-3 py-3 text-sm font-bold ${section!=='portfolio'?'bg-indigo-50 text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>
+          <span className="flex items-center gap-2"><TrendingUp className="h-4 w-4"/>Cash Flow</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${cashFlowOpen?'':'-rotate-90'}`}/>
+        </button>
+        {cashFlowOpen && <div className="mt-1 ml-2 pl-3 border-l border-slate-200 space-y-1">
+          {navItems.map(item => {
+            const Icon = item.icon;
+            return <button key={item.id} onClick={()=>navigate(item.id)} className={`w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-left ${section===item.id?'bg-slate-900 text-white':'text-slate-600 hover:bg-slate-50'}`}><Icon className="h-4 w-4"/>{item.label}</button>;
+          })}
+        </div>}
+        <button onClick={()=>navigate('portfolio')} className={`w-full mt-2 flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-bold ${section==='portfolio'?'bg-slate-900 text-white':'text-slate-700 hover:bg-slate-50'}`}><WalletCards className="h-4 w-4"/>Portfolio</button>
+      </nav>
+      <div className="mt-auto px-2 pt-4 text-xs text-slate-400">Manage cash flow and investments in one place.</div>
+    </aside>
+  );
+
+  return <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="hidden md:block fixed left-0 top-0 bottom-0 z-40">{sidebar}</div>
+    {mobileNavOpen && <>
+      <div className="fixed inset-0 z-40 bg-slate-900/30 md:hidden" onClick={()=>setMobileNavOpen(false)} />
+      <div className="fixed left-0 top-0 bottom-0 z-50 md:hidden">{sidebar}</div>
+    </>}
+    <div className="md:pl-64">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200"><div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <button onClick={()=>setMobileNavOpen(true)} className="md:hidden p-2 rounded-lg border border-slate-200" aria-label="Open menu"><Menu className="h-4 w-4"/></button>
+          <div className="md:hidden min-w-0"><b className="text-lg">FinBook</b></div>
+          <div className="hidden md:block text-sm font-semibold text-slate-500">{section==='portfolio'?'Portfolio':section==='budgets'?'Budgets':section==='analytics'?'Analytics':section==='transactions'?'Transactions':'Overview'}</div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={()=>shiftMonth(-1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Previous month"><ChevronLeft className="h-4 w-4"/></button>
+          <button type="button" onClick={openMonthPicker} className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 cursor-pointer min-w-28 justify-center border border-transparent hover:border-slate-200" title="Choose month" aria-label={`Choose month, currently ${formatMonthKeyToName(month)}`}>
+            <Calendar className="h-4 w-4 text-slate-500 shrink-0"/>
+            <span className="text-sm font-semibold text-center pointer-events-none">{formatMonthKeyToName(month)}</span>
+            <input ref={monthPickerRef} type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute pointer-events-none opacity-0 w-px h-px" tabIndex={-1} />
+          </button>
+          <button onClick={()=>shiftMonth(1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Next month"><ChevronRight className="h-4 w-4"/></button>
+          <button onClick={()=>{setEditing(null);setModal(true)}} className="ml-1 flex items-center gap-1.5 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold"><Plus className="h-4 w-4"/><span className="hidden sm:inline">Add</span></button>
+          <button onClick={()=>logoutUser()} title="Sign out" aria-label="Sign out" className="p-2 rounded-lg border border-slate-200"><LogOut className="h-4 w-4"/></button>
+        </div>
+      </div></header>
+      <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
+        {section==='overview' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Financial Overview</h2><p className="text-sm text-slate-500 mb-5">Real data for {formatMonthKeyToName(month)}</p><MetricCards totalSpent={alerts.totalSpent} totalBudget={alerts.totalBudget} monthKey={month} transactionCount={monthExpenses.length}/></section>}
+        {section==='budgets' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Budgets & Limits</h2><p className="text-sm text-slate-500">Set your own monthly spending limits.</p></div><button onClick={()=>setBudgetModal(true)} className="border rounded-lg px-3 py-2 text-sm font-semibold">Edit budgets</button></div><BudgetProgressList alerts={alerts.alerts} onOpenBudgetModal={()=>setBudgetModal(true)} selectedCategory={filter} onSelectCategory={setFilter}/></section>}
+        {section==='portfolio' && <PortfolioManager config={portfolio} onSave={saveP}/>} 
+        {section==='analytics' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Spending Analytics</h2><p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions.</p><ExpenseCharts currentMonthExpenses={monthExpenses} allExpenses={expenses} monthKey={month} budgetConfig={budget}/></section>}
+        {section==='transactions' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records.</p></div><div className="flex gap-2"><button onClick={exportCsv} className="border rounded-lg px-3 py-2 text-sm font-semibold">Export CSV</button><button onClick={()=>{setEditing(null);setModal(true)}} className="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm font-semibold">Add transaction</button></div></div><ExpenseList expenses={filter?monthExpenses.filter(e=>e.categoryId===filter):monthExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/></section>}
+      </main>
+      {message && <div className="fixed bottom-5 right-5 bg-slate-900 text-white rounded-xl px-4 py-3 text-sm shadow-xl max-w-sm">{message}</div>}
+      <ExpenseModal isOpen={modal} onClose={()=>{setModal(false);setEditing(null)}} onSave={save} editingExpense={editing} defaultDate={getTodayDateString()}/>
+      <BudgetManagerModal isOpen={budgetModal} onClose={()=>setBudgetModal(false)} currentBudgetConfig={budget} onSaveBudgets={saveB} monthName={formatMonthKeyToName(month)}/>
+    </div>
   </div>;
 }
