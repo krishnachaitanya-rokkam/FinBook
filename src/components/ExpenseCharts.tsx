@@ -322,30 +322,12 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                     stroke="#e11d48"
                     strokeDasharray="4 4"
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="budgetTrajectory"
-                    name="Target Trajectory"
-                    stroke="#94a3b8"
-                    strokeDasharray="4 4"
-                    fill="none"
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="actualSpend"
-                    name="Actual Spend"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    fillOpacity={1}
-                    fill="url(#spendGradient)"
-                  />
+                  <Area type="monotone" dataKey="budgetTrajectory" name="Target Trajectory" stroke="#94a3b8" strokeDasharray="4 4" fill="none" strokeWidth={2} />
+                  <Area type="monotone" dataKey="actualSpend" name="Actual Spend" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#spendGradient)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2.5 text-[11px] text-slate-500 text-center">
-              Day-by-day accumulation helps spot rapid budget depletion before month-end.
-            </div>
+            <div className="mt-2.5 text-[11px] text-slate-500 text-center">Day-by-day accumulation helps spot rapid budget depletion before month-end.</div>
           </div>
         )}
 
@@ -363,47 +345,33 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
                 <div className="h-72 lg:col-span-7">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie
-                        data={categoryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={65}
-                        outerRadius={95}
-                        paddingAngle={3}
-                        dataKey="amount"
-                      >
+                      <Pie data={categoryData} cx="50%" cy="50%" innerRadius={65} outerRadius={95} paddingAngle={3} dataKey="amount">
                         {categoryData.map((entry) => (
                           <Cell key={`cell-${entry.id}`} fill={entry.color} />
                         ))}
                       </Pie>
+                      <text x="50%" y="47%" textAnchor="middle" dominantBaseline="middle" fill="#0f172a" fontSize="24" fontWeight={700}>
+                        {formatCurrency(totalMonthSpend)}
+                      </text>
+                      <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" fill="#64748b" fontSize="11" fontWeight={500}>
+                        Total Expense
+                      </text>
                       <Tooltip content={<CategoryTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
 
                 <div className="lg:col-span-5 max-h-72 overflow-y-auto pr-2 space-y-1.5 custom-scrollbar">
-                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                    Ranked by Spending
-                  </div>
+                  <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Ranked by Spending</div>
                   {categoryData.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg hover:bg-slate-50 transition border border-transparent hover:border-slate-200"
-                    >
+                    <div key={item.id} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg hover:bg-slate-50 transition border border-transparent hover:border-slate-200">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: item.color }}
-                        />
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
                         <span className="font-semibold text-slate-800 truncate">{item.name}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="font-bold text-slate-900 font-display tabular-nums">
-                          {formatCurrency(item.amount)}
-                        </span>
-                        <span className="text-[11px] font-medium text-slate-400 w-9 text-right tabular-nums">
-                          {item.percentage}%
-                        </span>
+                        <span className="font-bold text-slate-900 font-display tabular-nums">{formatCurrency(item.amount)}</span>
+                        <span className="text-[11px] font-medium text-slate-400 w-9 text-right tabular-nums">{item.percentage}%</span>
                       </div>
                     </div>
                   ))}
@@ -417,63 +385,21 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
         {activeChartTab === 'history' && (
           <div>
             <div className="mb-4 flex items-center justify-between text-xs text-slate-600">
-              <div>
-                <span className="font-semibold text-slate-900">6-Month Trend Overview:</span> Monthly
-                expenditure patterns with current month marked.
-              </div>
+              <div><span className="font-semibold text-slate-900">6-Month Trend Overview:</span> Monthly expenditure patterns with current month marked.</div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded-xs bg-slate-900" />
-                  <span>Selected Month</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="inline-block h-3 w-3 rounded-xs bg-slate-300" />
-                  <span>Past Months</span>
-                </div>
+                <div className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-xs bg-slate-900" /><span>Selected Month</span></div>
+                <div className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded-xs bg-slate-300" /><span>Past Months</span></div>
               </div>
             </div>
-
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={historyData} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="monthName" tickLine={false} stroke="#94a3b8" fontSize={11} />
-                  <YAxis
-                    tickLine={false}
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickFormatter={(val) => `₹${val}`}
-                  />
-                  <Tooltip
-                    formatter={(val: any) => [formatCurrency(val), 'Spending']}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)',
-                      fontSize: '12px',
-                    }}
-                  />
-                  <ReferenceLine
-                    y={totalBudget}
-                    stroke="#e11d48"
-                    strokeDasharray="3 3"
-                    label={{
-                      value: `Budget: ₹${totalBudget}`,
-                      position: 'top',
-                      fill: '#e11d48',
-                      fontSize: 11,
-                    }}
-                  />
-                  <Bar dataKey="spend" radius={[4, 4, 0, 0]}>
-                    {historyData.map((entry, index) => (
-                      <Cell
-                        key={`bar-${index}`}
-                        fill={entry.isCurrent ? '#0f172a' : '#cbd5e1'}
-                      />
-                    ))}
-                  </Bar>
+                  <YAxis tickLine={false} stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₹${val}`} />
+                  <Tooltip formatter={(val: any) => [formatCurrency(val), 'Spending']} labelFormatter={(label) => `Month: ${label}`} contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.98)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)', fontSize: '12px' }} />
+                  <ReferenceLine y={totalBudget} stroke="#e11d48" strokeDasharray="3 3" label={{ value: `Budget: ₹${totalBudget}`, position: 'top', fill: '#e11d48', fontSize: 11 }} />
+                  <Bar dataKey="spend" radius={[4, 4, 0, 0]}>{historyData.map((entry, index) => (<Cell key={`bar-${index}`} fill={entry.isCurrent ? '#0f172a' : '#cbd5e1'} />))}</Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -483,48 +409,17 @@ export const ExpenseCharts: React.FC<ExpenseChartsProps> = ({
         {/* Tab 4: Day of Week Spending Pattern */}
         {activeChartTab === 'weekday' && (
           <div>
-            <div className="mb-4 text-xs text-slate-600">
-              <span className="font-semibold text-slate-900">Weekly Cadence Breakdown:</span> Identify
-              which days of the week experience the highest average spending volume.
-            </div>
-
+            <div className="mb-4 text-xs text-slate-600"><span className="font-semibold text-slate-900">Weekly Cadence Breakdown:</span> Identify which days of the week experience the highest average spending volume.</div>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weekdayData} margin={{ top: 10, right: 15, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="day" tickLine={false} stroke="#94a3b8" fontSize={11} />
-                  <YAxis
-                    tickLine={false}
-                    stroke="#94a3b8"
-                    fontSize={11}
-                    tickFormatter={(val) => `₹${val}`}
-                  />
-                  <Tooltip
-                    formatter={(val: any, name: any) => [
-                      formatCurrency(val),
-                      name === 'total' ? 'Total Spent' : 'Average',
-                    ]}
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)',
-                      fontSize: '12px',
-                    }}
-                  />
+                  <YAxis tickLine={false} stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₹${val}`} />
+                  <Tooltip formatter={(val: any, name: any) => [formatCurrency(val), name === 'total' ? 'Total Spent' : 'Average']} contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.98)', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.08)', fontSize: '12px' }} />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                  <Bar
-                    dataKey="total"
-                    name="Total Spent"
-                    fill="#0f172a"
-                    radius={[4, 4, 0, 0]}
-                  />
-                  <Bar
-                    dataKey="average"
-                    name="Daily Average"
-                    fill="#64748b"
-                    radius={[4, 4, 0, 0]}
-                  />
+                  <Bar dataKey="total" name="Total Spent" fill="#0f172a" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="average" name="Daily Average" fill="#64748b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
