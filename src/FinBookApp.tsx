@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
 import { getDefaultBudgetsForMonth } from './data/initialData';
 import { CATEGORY_MAP, PAYMENT_METHOD_LABELS } from './data/categories';
@@ -11,18 +11,21 @@ import { BudgetProgressList } from './components/BudgetProgressList';
 import { ExpenseModal } from './components/ExpenseModal';
 import { BudgetManagerModal } from './components/BudgetManagerModal';
 import { ExpenseList } from './components/ExpenseList';
+import { PortfolioManager } from './components/PortfolioManager';
 import { SignInPage } from './components/SignInPage';
 import { firebaseAuth } from './services/firebase';
 import { subscribeToUserData, removeExpense, saveBudget, saveExpense, clearUserData } from './services/firestoreData';
+import { subscribeToPortfolio, savePortfolio, DEFAULT_PORTFOLIO_FIELDS, PortfolioConfig } from './services/portfolioService';
 import { logoutUser } from './services/authService';
 
-type Section = 'overview' | 'budgets' | 'analytics' | 'transactions';
+type Section = 'overview' | 'budgets' | 'portfolio' | 'analytics' | 'transactions';
 
 export default function FinBookApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budgets, setBudgets] = useState<Record<string, MonthBudgetConfig>>({});
+  const [portfolio, setPortfolio] = useState<PortfolioConfig>({ fields: DEFAULT_PORTFOLIO_FIELDS });
   const [month, setMonth] = useState(getCurrentMonthKey());
   const [section, setSection] = useState<Section>('overview');
   const [modal, setModal] = useState(false);
@@ -34,16 +37,20 @@ export default function FinBookApp() {
 
   useEffect(() => {
     let unsubscribeData = () => {};
+    let unsubscribePortfolio = () => {};
 
     const unsubscribeAuth = onAuthStateChanged(firebaseAuth, (u) => {
       unsubscribeData();
+      unsubscribePortfolio();
       unsubscribeData = () => {};
+      unsubscribePortfolio = () => {};
       setReady(false);
 
       if (!u) {
         setUser(null);
         setExpenses([]);
         setBudgets({});
+        setPortfolio({ fields: DEFAULT_PORTFOLIO_FIELDS });
         setReady(true);
         return;
       }
@@ -69,10 +76,17 @@ export default function FinBookApp() {
           setReady(true);
         }
       );
+
+      unsubscribePortfolio = subscribeToPortfolio(
+        u.uid,
+        (data) => setPortfolio(data),
+        (error) => console.error('Portfolio sync error:', error)
+      );
     });
 
     return () => {
       unsubscribeData();
+      unsubscribePortfolio();
       unsubscribeAuth();
     };
   }, []);
@@ -122,6 +136,19 @@ export default function FinBookApp() {
     } catch (error: any) {
       setBudgets(previous);
       toast(`Could not save budget: ${error?.message || 'Please try again'}`);
+    }
+  };
+
+  const saveP = async (nextPortfolio: PortfolioConfig) => {
+    if (!user) return;
+    const previous = portfolio;
+    setPortfolio(nextPortfolio);
+    try {
+      await savePortfolio(user.id, nextPortfolio);
+      toast('Portfolio saved to cloud');
+    } catch (error: any) {
+      setPortfolio(previous);
+      toast(`Could not save portfolio: ${error?.message || 'Please try again'}`);
     }
   };
 
@@ -180,7 +207,7 @@ export default function FinBookApp() {
         e.notes||''
       ])
     ];
-    const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+    const csv=rows.map(r=>r.map(v=>`\"${String(v).replaceAll('"','\"\"')}\"`).join(',')).join('\n');
     const a=document.createElement('a');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     a.href=url;
@@ -205,9 +232,10 @@ export default function FinBookApp() {
       </div>
     </div></header>
     <main className="max-w-7xl mx-auto px-4 py-6 space-y-5">
-      <div className="flex flex-wrap gap-2"><button onClick={()=>setSection('overview')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='overview'?'bg-slate-900 text-white':'bg-white border'}`}><TrendingUp className="inline h-4 w-4 mr-1"/>Overview</button><button onClick={()=>setSection('budgets')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='budgets'?'bg-slate-900 text-white':'bg-white border'}`}><Target className="inline h-4 w-4 mr-1"/>Budgets</button><button onClick={()=>setSection('analytics')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='analytics'?'bg-slate-900 text-white':'bg-white border'}`}><PieChart className="inline h-4 w-4 mr-1"/>Analytics</button><button onClick={()=>setSection('transactions')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='transactions'?'bg-slate-900 text-white':'bg-white border'}`}><Receipt className="inline h-4 w-4 mr-1"/>Transactions ({monthExpenses.length})</button></div>
+      <div className="flex flex-wrap gap-2"><button onClick={()=>setSection('overview')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='overview'?'bg-slate-900 text-white':'bg-white border'}`}><TrendingUp className="inline h-4 w-4 mr-1"/>Overview</button><button onClick={()=>setSection('budgets')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='budgets'?'bg-slate-900 text-white':'bg-white border'}`}><Target className="inline h-4 w-4 mr-1"/>Budgets</button><button onClick={()=>setSection('portfolio')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='portfolio'?'bg-slate-900 text-white':'bg-white border'}`}><WalletCards className="inline h-4 w-4 mr-1"/>Portfolio</button><button onClick={()=>setSection('analytics')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='analytics'?'bg-slate-900 text-white':'bg-white border'}`}><PieChart className="inline h-4 w-4 mr-1"/>Analytics</button><button onClick={()=>setSection('transactions')} className={`px-3 py-2 rounded-lg text-sm font-semibold ${section==='transactions'?'bg-slate-900 text-white':'bg-white border'}`}><Receipt className="inline h-4 w-4 mr-1"/>Transactions ({monthExpenses.length})</button></div>
       {section==='overview' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Financial Overview</h2><p className="text-sm text-slate-500 mb-5">Real data for {formatMonthKeyToName(month)}</p><MetricCards totalSpent={alerts.totalSpent} totalBudget={alerts.totalBudget} monthKey={month} transactionCount={monthExpenses.length}/></section>}
       {section==='budgets' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Budgets & Limits</h2><p className="text-sm text-slate-500">Set your own monthly spending limits.</p></div><button onClick={()=>setBudgetModal(true)} className="border rounded-lg px-3 py-2 text-sm font-semibold">Edit budgets</button></div><BudgetProgressList alerts={alerts.alerts} onOpenBudgetModal={()=>setBudgetModal(true)} selectedCategory={filter} onSelectCategory={setFilter}/></section>}
+      {section==='portfolio' && <PortfolioManager config={portfolio} onSave={saveP}/>} 
       {section==='analytics' && <section className="bg-white rounded-2xl border p-5"><h2 className="font-bold mb-1">Spending Analytics</h2><p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions.</p><ExpenseCharts currentMonthExpenses={monthExpenses} allExpenses={expenses} monthKey={month} budgetConfig={budget}/></section>}
       {section==='transactions' && <section className="bg-white rounded-2xl border p-5"><div className="flex justify-between items-center mb-5"><div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records.</p></div><div className="flex gap-2"><button onClick={exportCsv} className="border rounded-lg px-3 py-2 text-sm font-semibold">Export CSV</button><button onClick={()=>{setEditing(null);setModal(true)}} className="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm font-semibold">Add transaction</button></div></div><ExpenseList expenses={filter?monthExpenses.filter(e=>e.categoryId===filter):monthExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/></section>}
     </main>
