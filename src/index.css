@@ -5,12 +5,32 @@
   --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  overflow-x: hidden;
+}
+
 body {
+  margin: 0;
   font-family: var(--font-sans);
   color: #0f172a;
   background-color: #f8fafc;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Custom scrollbars for professional polish */
@@ -30,4 +50,122 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Mobile layout refinements */
+@media (max-width: 640px) {
+  header > div {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  header > div > div:first-child {
+    justify-content: center;
+    min-width: 0;
+  }
+
+  header > div > div:last-child {
+    width: 100%;
+    min-width: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+
+  header > div > div:last-child > button,
+  header > div > div:last-child > div {
+    flex-shrink: 0;
+  }
+
+  main {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    padding-top: 16px !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* Keep primary section navigation usable without squeezing labels. */
+  main > div:first-child {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    justify-content: flex-start !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    white-space: nowrap;
+  }
+
+  main > div:first-child::-webkit-scrollbar {
+    display: none;
+  }
+
+  main > div:first-child > div:first-child {
+    flex-wrap: nowrap !important;
+    flex-shrink: 0;
+  }
+
+  main > div:first-child button {
+    flex-shrink: 0;
+  }
+
+  /* Section headers should wrap rather than compress controls into one line. */
+  main section > div:first-child {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  main section > div:first-child > div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  main section {
+    border-radius: 16px;
+  }
+
+  /* Avoid iOS input zoom and make controls easier to tap. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Keep modals within the phone viewport. */
+  [id$="-modal-dialog"] {
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+  }
+
+  #expense-charts-card,
+  #expenses-table-card {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  header > div > div:first-child p {
+    display: none;
+  }
+
+  main {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  main > div:first-child button {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
 }
