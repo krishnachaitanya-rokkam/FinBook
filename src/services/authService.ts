@@ -1,97 +1,14 @@
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, onAuthStateChanged, User } from 'firebase/auth';
 import { AuthUser } from '../types';
+import { firebaseAuth } from './firebase';
 
-const AUTH_USER_KEY = 'expense_tracker_auth_user_v1';
-
-export function getStoredUser(): AuthUser | null {
-  try {
-    const raw = localStorage.getItem(AUTH_USER_KEY);
-    if (raw) {
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.error('Error reading auth user from storage:', e);
-  }
-  return null;
+function mapUser(user: User): AuthUser {
+  return { id: user.uid, email: user.email || '', name: user.displayName || user.email?.split('@')[0] || 'FinBook User', avatarUrl: user.photoURL || undefined, provider: 'email', lastLogin: Date.now() };
 }
-
-export function setStoredUser(user: AuthUser | null): void {
-  try {
-    if (user) {
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
-    } else {
-      localStorage.removeItem(AUTH_USER_KEY);
-    }
-  } catch (e) {
-    console.error('Error saving auth user to storage:', e);
-  }
-}
-
-export async function loginUser(email: string, password?: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Failed to sign in' };
-    }
-    setStoredUser(data.user);
-    return { success: true, user: data.user };
-  } catch (err: any) {
-    // Fallback if offline
-    const fallbackUser: AuthUser = {
-      id: 'usr-' + Math.random().toString(36).substring(2, 8),
-      email,
-      name: email.split('@')[0],
-      provider: 'email',
-      lastLogin: Date.now(),
-    };
-    setStoredUser(fallbackUser);
-    return { success: true, user: fallbackUser };
-  }
-}
-
-export async function signupUser(email: string, password?: string, name?: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  try {
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      return { success: false, error: data.error || 'Failed to create account' };
-    }
-    setStoredUser(data.user);
-    return { success: true, user: data.user };
-  } catch (err: any) {
-    const fallbackUser: AuthUser = {
-      id: 'usr-' + Math.random().toString(36).substring(2, 8),
-      email,
-      name: name || email.split('@')[0],
-      provider: 'email',
-      lastLogin: Date.now(),
-    };
-    setStoredUser(fallbackUser);
-    return { success: true, user: fallbackUser };
-  }
-}
-
-export function loginDemoUser(email = 'chaitu.krishna580@gmail.com', name = 'Chaitu Krishna'): AuthUser {
-  const demoUser: AuthUser = {
-    id: 'usr-demo-' + Math.random().toString(36).substring(2, 7),
-    email,
-    name,
-    isDemo: true,
-    provider: 'demo',
-    lastLogin: Date.now(),
-  };
-  setStoredUser(demoUser);
-  return demoUser;
-}
-
-export function logoutUser(): void {
-  setStoredUser(null);
-}
+export function getStoredUser(): AuthUser | null { return null; }
+export function setStoredUser(_user: AuthUser | null): void {}
+export function subscribeToAuth(callback: (user: AuthUser | null) => void): () => void { return onAuthStateChanged(firebaseAuth, user => callback(user ? mapUser(user) : null)); }
+export async function loginUser(email: string, password: string) { try { const c = await signInWithEmailAndPassword(firebaseAuth, email, password); return { success: true, user: mapUser(c.user) }; } catch (err: any) { return { success: false, error: friendlyAuthError(err?.code) }; } }
+export async function signupUser(email: string, password: string, name?: string) { try { const c = await createUserWithEmailAndPassword(firebaseAuth, email, password); if (name?.trim()) await updateProfile(c.user, { displayName: name.trim() }); return { success: true, user: mapUser(c.user) }; } catch (err: any) { return { success: false, error: friendlyAuthError(err?.code) }; } }
+function friendlyAuthError(code?: string): string { switch (code) { case 'auth/email-already-in-use': return 'An account already exists with this email.'; case 'auth/invalid-credential': return 'Incorrect email or password.'; case 'auth/weak-password': return 'Password must be at least 6 characters.'; case 'auth/invalid-email': return 'Please enter a valid email address.'; case 'auth/too-many-requests': return 'Too many attempts. Please try again later.'; default: return 'Unable to complete authentication. Please try again.'; } }
+export async function logoutUser(): Promise<void> { await signOut(firebaseAuth); }
