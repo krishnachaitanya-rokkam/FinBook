@@ -10,6 +10,8 @@ import {
 import { AuthUser } from '../types';
 import { firebaseAuth } from './firebase';
 
+const AUTH_USER_KEY = 'finbook_auth_user_v1';
+
 function mapUser(user: User): AuthUser {
   return {
     id: user.uid,
@@ -22,19 +24,37 @@ function mapUser(user: User): AuthUser {
 }
 
 export function getStoredUser(): AuthUser | null {
-  return null;
+  try {
+    const raw = localStorage.getItem(AUTH_USER_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
 }
 
-export function setStoredUser(_user: AuthUser | null): void {}
+export function setStoredUser(user: AuthUser | null): void {
+  try {
+    if (user) localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(AUTH_USER_KEY);
+  } catch {
+    // Storage may be unavailable; Firebase remains the source of truth.
+  }
+}
 
 export function subscribeToAuth(callback: (user: AuthUser | null) => void): () => void {
-  return onAuthStateChanged(firebaseAuth, (user) => callback(user ? mapUser(user) : null));
+  return onAuthStateChanged(firebaseAuth, (user) => {
+    const mapped = user ? mapUser(user) : null;
+    setStoredUser(mapped);
+    callback(mapped);
+  });
 }
 
 export async function loginUser(email: string, password: string) {
   try {
     const c = await signInWithEmailAndPassword(firebaseAuth, email, password);
-    return { success: true, user: mapUser(c.user) };
+    const user = mapUser(c.user);
+    setStoredUser(user);
+    return { success: true, user };
   } catch (err) {
     return { success: false, error: friendlyAuthError(err) };
   }
@@ -46,7 +66,9 @@ export async function signupUser(email: string, password: string, name?: string)
     if (name?.trim()) {
       await updateProfile(c.user, { displayName: name.trim() });
     }
-    return { success: true, user: mapUser(c.user) };
+    const user = mapUser(c.user);
+    setStoredUser(user);
+    return { success: true, user };
   } catch (err) {
     return { success: false, error: friendlyAuthError(err) };
   }
@@ -69,15 +91,15 @@ function friendlyAuthError(error: unknown): string {
     case 'auth/too-many-requests':
       return 'Too many attempts. Please wait a while and try again.';
     case 'auth/operation-not-allowed':
-      return 'Email/Password sign-in is not enabled in Firebase yet. Enable it under Authentication → Sign-in method.';
+      return 'Email/Password authentication is disabled in Firebase. Enable it under Authentication → Sign-in method.';
     case 'auth/configuration-not-found':
-      return 'Firebase Authentication is not configured for this project yet. Enable Email/Password authentication in the Firebase Console.';
+      return 'Firebase Authentication is not configured yet. Enable Email/Password authentication in the Firebase Console.';
     case 'auth/unauthorized-domain':
-      return 'This GitHub Pages domain is not authorized in Firebase. Add krishnachaitanya-rokkam.github.io under Authentication → Settings → Authorized domains.';
+      return 'This site is not authorized in Firebase. Add krishnachaitanya-rokkam.github.io under Authentication → Settings → Authorized domains.';
     case 'auth/network-request-failed':
-      return 'Network error while contacting Firebase. Check your internet connection and try again.';
+      return 'Network error while contacting Firebase. Check your connection and try again.';
     case 'auth/invalid-api-key':
-      return 'The Firebase web API key is invalid or restricted. Check the Firebase project configuration.';
+      return 'The Firebase API key is invalid or restricted. Check the Firebase project configuration.';
     case 'auth/admin-restricted-operation':
       return 'This authentication operation is restricted for the Firebase project.';
     default:
@@ -89,5 +111,6 @@ function friendlyAuthError(error: unknown): string {
 }
 
 export async function logoutUser(): Promise<void> {
+  setStoredUser(null);
   await signOut(firebaseAuth);
 }
