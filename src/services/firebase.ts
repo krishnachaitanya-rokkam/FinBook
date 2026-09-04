@@ -3,12 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBlXo2Tsu6sjlcfUkG3WkwBBf_C9MXquV8',
-  authDomain: 'flash-oath-0xjsq.firebaseapp.com',
-  projectId: 'flash-oath-0xjsq',
-  storageBucket: 'flash-oath-0xjsq.firebasestorage.app',
-  messagingSenderId: '154936023209',
-  appId: '1:154936023209:web:a83e502c1910b5217031b8',
+  apiKey: 'AIzaSyAT5fKJH-E8_JurGkLW9ykHPZAlGdYUxnA',
+  authDomain: 'expense-tracker-8745f.firebaseapp.com',
+  projectId: 'expense-tracker-8745f',
+  storageBucket: 'expense-tracker-8745f.firebasestorage.app',
+  messagingSenderId: '797101749995',
+  appId: '1:797101749995:web:76cb44bf0b32cc404430ae',
+  measurementId: 'G-L3G1HXM1EG',
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
