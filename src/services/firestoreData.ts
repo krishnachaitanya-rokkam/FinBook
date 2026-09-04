@@ -17,6 +17,24 @@ type UserData = {
   budgets: Record<string, MonthBudgetConfig>;
 };
 
+function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefined(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    const result: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      if (item !== undefined) result[key] = stripUndefined(item);
+    });
+    return result as T;
+  }
+  return value;
+}
+
+function normalizeExpense(expense: Expense): Expense {
+  return stripUndefined(expense);
+}
+
 function readCache(uid: string): UserData | null {
   try {
     const raw = localStorage.getItem(cacheKey(uid));
@@ -34,18 +52,19 @@ function readCache(uid: string): UserData | null {
 
 function writeCache(uid: string, data: UserData): void {
   try {
-    localStorage.setItem(cacheKey(uid), JSON.stringify(data));
+    localStorage.setItem(cacheKey(uid), JSON.stringify(stripUndefined(data)));
   } catch {
     // Cloud remains the primary persistence layer when browser storage is unavailable.
   }
 }
 
 function updateExpenseCache(uid: string, expense: Expense): void {
+  const normalized = normalizeExpense(expense);
   const cached = readCache(uid) || { expenses: [], budgets: {} };
-  const existingIndex = cached.expenses.findIndex((item) => item.id === expense.id);
+  const existingIndex = cached.expenses.findIndex((item) => item.id === normalized.id);
   const expenses = [...cached.expenses];
-  if (existingIndex >= 0) expenses[existingIndex] = expense;
-  else expenses.unshift(expense);
+  if (existingIndex >= 0) expenses[existingIndex] = normalized;
+  else expenses.unshift(normalized);
   expenses.sort((a, b) => b.date.localeCompare(a.date));
   writeCache(uid, { ...cached, expenses });
 }
@@ -63,12 +82,12 @@ function updateBudgetCache(uid: string, budget: MonthBudgetConfig): void {
   const cached = readCache(uid) || { expenses: [], budgets: {} };
   writeCache(uid, {
     ...cached,
-    budgets: { ...cached.budgets, [budget.monthKey]: budget },
+    budgets: { ...cached.budgets, [budget.monthKey]: stripUndefined(budget) },
   });
 }
 
 function writeFullCache(uid: string, data: UserData): void {
-  writeCache(uid, data);
+  writeCache(uid, stripUndefined(data));
 }
 
 export async function loadUserData(uid: string): Promise<UserData> {
@@ -78,7 +97,7 @@ export async function loadUserData(uid: string): Promise<UserData> {
   ]);
 
   const expenses = expenseSnap.docs
-    .map((d) => d.data() as Expense)
+    .map((d) => normalizeExpense(d.data() as Expense))
     .sort((a, b) => b.date.localeCompare(a.date));
 
   const budgets: Record<string, MonthBudgetConfig> = {};
@@ -100,8 +119,6 @@ export function subscribeToUserData(
   onChange: (data: UserData) => void,
   onError?: (error: Error) => void
 ): () => void {
-  // Show the last known data immediately. This prevents a refresh from producing
-  // an empty dashboard while the network/database connection is being established.
   const cached = readCache(uid);
   if (cached) onChange(cached);
 
@@ -112,7 +129,10 @@ export function subscribeToUserData(
 
   const publish = () => {
     if (!expensesReady || !budgetsReady) return;
-    const data = { expenses: [...expenses], budgets: { ...budgets } };
+    const data = {
+      expenses: expenses.map(normalizeExpense),
+      budgets: stripUndefined(budgets),
+    } as UserData;
     writeFullCache(uid, data);
     onChange(data);
   };
@@ -121,7 +141,7 @@ export function subscribeToUserData(
     collection(userRoot(uid), 'expenses'),
     (snapshot) => {
       expenses = snapshot.docs
-        .map((d) => d.data() as Expense)
+        .map((d) => normalizeExpense(d.data() as Expense))
         .sort((a, b) => b.date.localeCompare(a.date));
       expensesReady = true;
       publish();
@@ -149,8 +169,9 @@ export function subscribeToUserData(
 }
 
 export async function saveExpense(uid: string, expense: Expense): Promise<void> {
-  updateExpenseCache(uid, expense);
-  await setDoc(doc(userRoot(uid), 'expenses', expense.id), expense);
+  const normalized = normalizeExpense(expense);
+  updateExpenseCache(uid, normalized);
+  await setDoc(doc(userRoot(uid), 'expenses', normalized.id), normalized);
 }
 
 export async function removeExpense(uid: string, id: string): Promise<void> {
@@ -159,8 +180,9 @@ export async function removeExpense(uid: string, id: string): Promise<void> {
 }
 
 export async function saveBudget(uid: string, budget: MonthBudgetConfig): Promise<void> {
-  updateBudgetCache(uid, budget);
-  await setDoc(doc(userRoot(uid), 'budgets', budget.monthKey), budget);
+  const normalized = stripUndefined(budget);
+  updateBudgetCache(uid, normalized);
+  await setDoc(doc(userRoot(uid), 'budgets', normalized.monthKey), normalized);
 }
 
 export async function clearUserData(uid: string): Promise<void> {
