@@ -1,12 +1,11 @@
 {
-  "projectId": "flash-oath-0xjsq",
-  "appId": "1:154936023209:web:a83e502c1910b5217031b8",
-  "apiKey": "AIzaSyBlXo2Tsu6sjlcfUkG3WkwBBf_C9MXquV8",
-  "authDomain": "flash-oath-0xjsq.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-finbook-dbec711c-9a1b-40df-a2c2-e2c0f02eb1aa",
-  "storageBucket": "flash-oath-0xjsq.firebasestorage.app",
-  "messagingSenderId": "154936023209",
-  "measurementId": "",
-  "oAuthClientId": "154936023209-gvs9fcukkpbm1id5tciitohla7t95cla.apps.googleusercontent.com",
+  "projectId": "expense-tracker-8745f",
+  "appId": "1:797101749995:web:76cb44bf0b32cc404430ae",
+  "apiKey": "AIzaSyAT5fKJH-E8_JurGkLW9ykHPZAlGdYUxnA",
+  "authDomain": "expense-tracker-8745f.firebaseapp.com",
+  "storageBucket": "expense-tracker-8745f.firebasestorage.app",
+  "messagingSenderId": "797101749995",
+  "measurementId": "G-L3G1HXM1EG",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
