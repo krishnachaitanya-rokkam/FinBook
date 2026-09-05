@@ -76,3 +76,7 @@ main > section { padding: 16px !important; }
 
 /* Safety net for the old floating Recurring action from the previous UI. */
 button[class*="fixed"][class*="bottom-"] { display: none !important; }
+
+/* Transactions use a neutral receipt/list glyph instead of a currency symbol. */
+button:has(svg.lucide-receipt) > svg.lucide-receipt { display: none !important; }
+button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; line-height: 1; font-weight: 500; }
