@@ -4,7 +4,9 @@ import { firestore } from './firebase';
 
 export type CustomCategory = Category & { createdAt: number };
 
-const categoriesRef = (uid: string) => collection(firestore, 'users', uid, 'settings', 'categories');
+// Keep custom categories directly under the authenticated user's document.
+// Firestore collection paths must contain an odd number of path segments.
+const categoriesRef = (uid: string) => collection(firestore, 'users', uid, 'categories');
 
 export function subscribeToCustomCategories(uid: string, onChange: (categories: CustomCategory[]) => void, onError?: (error: Error) => void) {
   return onSnapshot(categoriesRef(uid), snapshot => {
