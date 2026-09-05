@@ -7,135 +7,58 @@
 
 html, body, #root { min-height: 100%; }
 html { overflow-x: hidden; }
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  color: #172033;
-  background: #f5f7fb;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+body { margin:0; font-family:var(--font-sans); color:#14213d; background:#f4f7fb; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
+
+/* FINBOOK MODERN FINTECH THEME — layout/menu/fields remain unchanged. */
+.bg-slate-50{background:#f4f7fb!important}.bg-slate-100{background:#edf2f7!important}.bg-slate-200{background:#e2e8f0!important}.bg-slate-900{background:#172554!important}.bg-white{background:#fff!important}
+.text-slate-900{color:#14213d!important}.text-slate-800{color:#24324a!important}.text-slate-700{color:#46566f!important}.text-slate-600{color:#64748b!important}.text-slate-500{color:#7b8799!important}.text-slate-400{color:#94a3b8!important}.text-slate-300{color:#cbd5e1!important}
+.border-slate-100{border-color:#edf1f5!important}.border-slate-200{border-color:#dfe6ef!important}.border-slate-300{border-color:#cbd5e1!important}
+.hover\\:bg-slate-50:hover{background:#f1f5f9!important}.hover\\:bg-slate-100:hover{background:#e8eef5!important}.hover\\:bg-slate-800:hover{background:#1e3a8a!important}
+
+/* Dark navigation rail — same menu placement. */
+aside{background:#0f172a!important;border-color:#0f172a!important;box-shadow:8px 0 30px rgba(15,23,42,.10)!important}
+aside .border-slate-100{border-color:rgba(255,255,255,.09)!important}aside .text-slate-900,aside .text-slate-800,aside .text-slate-700{color:#f8fafc!important}aside .text-slate-500,aside .text-slate-400{color:#94a3b8!important}aside button{color:#cbd5e1!important}aside button:hover{background:rgba(255,255,255,.07)!important;color:#fff!important}
+aside nav button.bg-indigo-50{background:rgba(99,102,241,.18)!important;color:#a5b4fc!important}aside nav button.bg-slate-900{background:#4f46e5!important;color:#fff!important}aside .h-10.w-10{background:#4f46e5!important;box-shadow:0 8px 22px rgba(79,70,229,.35)!important}
+
+/* Floating-style app header. */
+header{background:rgba(244,247,251,.94)!important;border-bottom:0!important;box-shadow:none!important;backdrop-filter:blur(18px)}
+header>div{max-width:1440px!important}
+
+/* Segmented fintech tabs. */
+main>div:first-child{background:#e8edf4!important;border:1px solid #dce4ee!important;border-radius:16px!important;padding:5px!important;box-shadow:none!important}
+main>div:first-child button{border-radius:11px!important;min-height:44px;color:#66758b!important}
+main>div:first-child button:hover{background:#f8fafc!important;color:#24324a!important}
+main>div:first-child button.bg-slate-900{background:#fff!important;color:#172554!important;box-shadow:0 2px 10px rgba(15,23,42,.10)!important}
+
+/* Large, airy finance cards. */
+main>section,main>div>section{border:1px solid #e1e8f0!important;border-radius:22px!important;background:#fff!important;box-shadow:0 10px 32px rgba(15,23,42,.055)!important}
+main>section h2,main>div>section h2{letter-spacing:-.025em}
+#metric-summary-grid>div{border:1px solid #e6ecf3!important;border-radius:18px!important;background:linear-gradient(145deg,#fff,#f8fafc)!important;box-shadow:0 5px 18px rgba(15,23,42,.035)!important}
+
+/* Strong primary action. */
+button.bg-slate-900,button[class*="bg-indigo-"],button[class*="bg-violet-"]{background:#4f46e5!important;box-shadow:0 7px 18px rgba(79,70,229,.20)!important}
+button.bg-slate-900:hover,button[class*="bg-indigo-"]:hover,button[class*="bg-violet-"]:hover{background:#4338ca!important;box-shadow:0 9px 22px rgba(79,70,229,.28)!important;transform:translateY(-1px)}
+button{transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}
+
+/* Clean fintech controls. */
+input,select,textarea{border-color:#d9e2ec!important;background:#fff!important;color:#14213d!important;border-radius:10px}
+input::placeholder,textarea::placeholder{color:#9aa7b8}input:focus,select:focus,textarea:focus{border-color:#6366f1!important;box-shadow:0 0 0 3px rgba(99,102,241,.11)!important;outline:none}
+#expense-charts-card{border:1px solid #e1e8f0!important;border-radius:18px!important;box-shadow:none!important}
+[id$="-modal-dialog"]{border:1px solid #dfe6ef!important;border-radius:22px!important;box-shadow:0 24px 70px rgba(15,23,42,.18)!important}
+
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9999px}
+
+@media(max-width:640px){
+ header>div{width:100%;box-sizing:border-box;padding:8px 10px!important;flex-direction:column;align-items:stretch!important;gap:7px!important}
+ header>div>div:first-child{justify-content:flex-start;min-width:0;width:100%}header>div>div:last-child{width:100%;min-width:0;justify-content:space-between;flex-wrap:nowrap;gap:4px!important}
+ header>div>div:last-child>button,header>div>div:last-child>div{flex-shrink:0}main{width:100%;box-sizing:border-box;padding:10px 10px 18px!important;gap:10px!important}
+ main>div:first-child{flex-wrap:nowrap!important;overflow-x:auto;justify-content:flex-start!important;scrollbar-width:none;-ms-overflow-style:none}main>div:first-child::-webkit-scrollbar{display:none}main>div:first-child button{flex-shrink:0}
+ main>section{padding:12px!important;border-radius:18px!important}main section>div:first-child{flex-wrap:wrap;align-items:flex-start;gap:9px}main section>div:first-child>div:last-child{width:100%;justify-content:flex-start;flex-wrap:wrap}
+ #metric-summary-grid{gap:8px!important}#metric-summary-grid>div{padding:12px!important;border-radius:15px!important}#expense-charts-card{width:100%;max-width:100%}
+ #expense-charts-card>div:first-child{padding:12px!important}#expense-charts-card>div:last-child{padding:10px!important}input,select,textarea{font-size:16px!important}[id$="-modal-dialog"]{max-width:calc(100vw - 20px)!important;max-height:calc(100vh - 20px);overflow-y:auto}
 }
-button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-
-/* Modern fintech palette — layout and menu structure remain unchanged. */
-.bg-slate-50 { background-color: #f5f7fb !important; }
-.bg-slate-100 { background-color: #eef1f6 !important; }
-.bg-slate-200 { background-color: #e3e7ef !important; }
-.bg-slate-900 { background-color: #5146e5 !important; }
-.bg-white { background-color: #ffffff !important; }
-.text-slate-900 { color: #172033 !important; }
-.text-slate-800 { color: #253047 !important; }
-.text-slate-700 { color: #46536b !important; }
-.text-slate-600 { color: #66738a !important; }
-.text-slate-500 { color: #7d889d !important; }
-.text-slate-400 { color: #9aa4b6 !important; }
-.text-slate-300 { color: #c0c7d3 !important; }
-.border-slate-100 { border-color: #eef1f5 !important; }
-.border-slate-200 { border-color: #e4e8ef !important; }
-.border-slate-300 { border-color: #d5dae4 !important; }
-.hover\:bg-slate-50:hover { background-color: #f1f3f8 !important; }
-.hover\:bg-slate-100:hover { background-color: #e9edf4 !important; }
-.hover\:bg-slate-800:hover { background-color: #4338ca !important; }
-.hover\:border-slate-200:hover { border-color: #d9dee8 !important; }
-.hover\:border-slate-300:hover { border-color: #c9cfdb !important; }
-.focus\:border-slate-900:focus { border-color: #6d63f2 !important; }
-.focus\:ring-slate-900:focus { --tw-ring-color: #6d63f2 !important; }
-
-/* Fintech surfaces: crisp cards, restrained borders and soft elevation. */
-main > section,
-main > div > section,
-main > div > div {
-  border-color: #e7eaf1;
-}
-
-main > section,
-#metric-summary-grid > div,
-#expense-charts-card,
-[id$="-modal-dialog"] {
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 24px rgba(15, 23, 42, 0.045);
-}
-
-header {
-  box-shadow: 0 1px 8px rgba(15, 23, 42, 0.035);
-}
-
-button {
-  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
-}
-
-button.bg-slate-900,
-button[class*="bg-indigo-"],
-button[class*="bg-violet-"] {
-  box-shadow: 0 5px 14px rgba(81, 70, 229, 0.20);
-}
-
-button.bg-slate-900:hover,
-button[class*="bg-indigo-"]:hover,
-button[class*="bg-violet-"]:hover {
-  box-shadow: 0 7px 18px rgba(81, 70, 229, 0.26);
-  transform: translateY(-1px);
-}
-
-input, select, textarea {
-  border-color: #dfe4ed !important;
-  background-color: #ffffff !important;
-  color: #172033 !important;
-}
-
-input::placeholder, textarea::placeholder { color: #9aa4b6; }
-input:focus, select:focus, textarea:focus {
-  border-color: #6d63f2 !important;
-  box-shadow: 0 0 0 3px rgba(109, 99, 242, 0.10) !important;
-  outline: none;
-}
-
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd1dc; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #aeb6c5; }
-
-/* Responsive finance-app layout: compact on phones, balanced on desktop. */
-main > section { padding: 16px !important; }
-
-@media (max-width: 640px) {
-  header > div { width: 100%; box-sizing: border-box; padding: 8px 10px !important; flex-direction: column; align-items: stretch !important; gap: 7px !important; }
-  header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
-  header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
-  header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
-  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; }
-  main > div:first-child { flex-wrap: nowrap !important; overflow-x: auto; justify-content: flex-start !important; scrollbar-width: none; -ms-overflow-style: none; }
-  main > div:first-child::-webkit-scrollbar { display: none; }
-  main > div:first-child button { flex-shrink: 0; }
-  main > section { padding: 12px !important; border-radius: 16px; }
-  main section > div:first-child { flex-wrap: wrap; align-items: flex-start; gap: 9px; }
-  main section > div:first-child > div:last-child { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
-  #metric-summary-grid { gap: 8px !important; }
-  #metric-summary-grid > div { padding: 12px !important; border-radius: 14px; }
-  #expense-charts-card { width: 100%; max-width: 100%; }
-  #expense-charts-card > div:first-child { padding: 12px !important; }
-  #expense-charts-card > div:last-child { padding: 10px !important; }
-  input, select, textarea { font-size: 16px !important; }
-  [id$="-modal-dialog"] { max-width: calc(100vw - 20px) !important; max-height: calc(100vh - 20px); overflow-y: auto; }
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: clamp(14px, 4.2vw, 18px) !important; font-weight: 700 !important; }
-  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
-}
-
-@media (min-width: 641px) {
-  main { gap: 16px; }
-}
-
-@media (max-width: 380px) {
-  header > div > div:first-child p { display: none; }
-  main { padding-left: 8px !important; padding-right: 8px !important; }
-  main > div:first-child button { padding-left: 9px !important; padding-right: 9px !important; }
-  #metric-summary-grid > div { padding: 10px !important; }
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: 14px !important; }
-}
-
-/* Safety net for the old floating Recurring action from the previous UI. */
-button[class*="fixed"][class*="bottom-"] { display: none !important; }
+@media(min-width:641px){main{gap:18px}}@media(max-width:380px){main{padding-left:8px!important;padding-right:8px!important}main>div:first-child button{padding-left:9px!important;padding-right:9px!important}#metric-summary-grid>div{padding:10px!important}}
 
 /* Keep the current neutral Transactions receipt/list glyph. */
-button:has(svg.lucide-receipt) > svg.lucide-receipt { display: none !important; }
-button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; line-height: 1; font-weight: 500; }
+button:has(svg.lucide-receipt)>svg.lucide-receipt{display:none!important}button:has(svg.lucide-receipt)::before{content:'▤';font-size:1.25rem;line-height:1;font-weight:500}
