@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
+import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, CalendarRange, WalletCards, Menu, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
 import { getDefaultBudgetsForMonth } from './data/initialData';
 import { CATEGORY_MAP, PAYMENT_METHOD_LABELS } from './data/categories';
@@ -22,6 +22,25 @@ import { logoutUser } from './services/authService';
 type Section = 'cashflow' | 'portfolio' | 'settings';
 type CashFlowView = 'overview' | 'budgets' | 'analytics' | 'transactions';
 
+const getMonthBounds = (monthKey: string) => {
+  const [year, month] = monthKey.split('-').map(Number);
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    start: `${year}-${String(month).padStart(2, '0')}-01`,
+    end: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+  };
+};
+
+const formatDate = (value: string) => {
+  if (!value) return '';
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
 export default function FinBookApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
@@ -38,6 +57,10 @@ export default function FinBookApp() {
   const [editing, setEditing] = useState<Expense | null>(null);
   const [filter, setFilter] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [rangeStart, setRangeStart] = useState('');
+  const [rangeEnd, setRangeEnd] = useState('');
   const monthPickerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -100,9 +123,58 @@ export default function FinBookApp() {
   const budget = budgets[month] || getDefaultBudgetsForMonth(month);
   const alerts = useMemo(() => computeCategoryAlerts(monthExpenses, budget), [monthExpenses, budget]);
 
+  const rangeExpenses = useMemo(() => {
+    if (!rangeEnabled || !rangeStart || !rangeEnd) return monthExpenses;
+    return expenses.filter(e => e.date >= rangeStart && e.date <= rangeEnd);
+  }, [expenses, monthExpenses, rangeEnabled, rangeStart, rangeEnd]);
+
+  const cashFlowExpenses = rangeEnabled ? rangeExpenses : monthExpenses;
+  const periodAlerts = useMemo(() => computeCategoryAlerts(cashFlowExpenses, budget), [cashFlowExpenses, budget]);
+
   const toast = (text: string) => {
     setMessage(text);
     window.setTimeout(() => setMessage(''), 3000);
+  };
+
+  const clearRange = () => {
+    setRangeEnabled(false);
+    setRangeOpen(false);
+    setRangeStart('');
+    setRangeEnd('');
+    setFilter(null);
+  };
+
+  const openRangePicker = () => {
+    if (!rangeEnabled) {
+      const bounds = getMonthBounds(month);
+      setRangeStart(bounds.start);
+      setRangeEnd(bounds.end);
+    }
+    setRangeOpen(v => !v);
+  };
+
+  const applyRange = () => {
+    if (!rangeStart || !rangeEnd) {
+      toast('Choose both start and end dates');
+      return;
+    }
+    if (rangeStart > rangeEnd) {
+      toast('Start date must be before end date');
+      return;
+    }
+    setRangeEnabled(true);
+    setRangeOpen(false);
+    setFilter(null);
+  };
+
+  const updateRangeStart = (value: string) => {
+    setRangeStart(value);
+    if (rangeEnd && value > rangeEnd) setRangeEnd(value);
+  };
+
+  const updateRangeEnd = (value: string) => {
+    setRangeEnd(value);
+    if (rangeStart && value < rangeStart) setRangeStart(value);
   };
 
   const navigate = (nextSection: Section) => {
@@ -194,6 +266,7 @@ export default function FinBookApp() {
     const d=new Date(y,m-1+delta,1);
     setMonth(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
     setFilter(null);
+    clearRange();
   };
 
   const openMonthPicker = () => {
@@ -211,12 +284,13 @@ export default function FinBookApp() {
     if (!/^\d{4}-\d{2}$/.test(value)) return;
     setMonth(value);
     setFilter(null);
+    clearRange();
   };
 
   const exportCsv=()=>{
     const rows=[
       ['Date','Title','Category','Amount','Payment Method','Notes'],
-      ...monthExpenses.map(e=>[
+      ...cashFlowExpenses.map(e=>[
         e.date,
         e.title,
         CATEGORY_MAP.get(e.categoryId)?.name||e.categoryId,
@@ -225,11 +299,11 @@ export default function FinBookApp() {
         e.notes||''
       ])
     ];
-    const csv=rows.map(r=>r.map(v=>`\"${String(v).replaceAll('"','\"\"')}\"`).join(',')).join('\n');
+    const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
     const a=document.createElement('a');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     a.href=url;
-    a.download=`FinBook-${month}.csv`;
+    a.download=`FinBook-${rangeEnabled ? `${rangeStart}-to-${rangeEnd}` : month}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -271,7 +345,7 @@ export default function FinBookApp() {
     { id: 'overview' as CashFlowView, label: 'Overview', icon: TrendingUp },
     { id: 'budgets' as CashFlowView, label: 'Budgets', icon: Target },
     { id: 'analytics' as CashFlowView, label: 'Analytics', icon: PieChart },
-    { id: 'transactions' as CashFlowView, label: `Transactions (${monthExpenses.length})`, icon: Receipt },
+    { id: 'transactions' as CashFlowView, label: `Transactions (${cashFlowExpenses.length})`, icon: Receipt },
   ];
 
   return <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -317,10 +391,45 @@ export default function FinBookApp() {
             })}
           </div>
 
+          <div className="bg-white rounded-2xl border p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</p>
+                <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">
+                  {rangeEnabled ? `${formatDate(rangeStart)} – ${formatDate(rangeEnd)}` : formatMonthKeyToName(month)}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {rangeEnabled && <button onClick={clearRange} className="px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50">Reset</button>}
+                <button onClick={openRangePicker} className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold border ${rangeEnabled ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}>
+                  <CalendarRange className="h-4 w-4" />
+                  {rangeEnabled ? 'Edit date range' : 'Custom date range'}
+                </button>
+              </div>
+            </div>
+
+            {rangeOpen && <div className="mt-4 pt-4 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block min-w-0">
+                  <span className="block text-xs font-semibold text-slate-500 mb-1.5">Start date</span>
+                  <input type="date" value={rangeStart} onChange={e=>updateRangeStart(e.target.value)} className="w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 text-sm bg-white" />
+                </label>
+                <label className="block min-w-0">
+                  <span className="block text-xs font-semibold text-slate-500 mb-1.5">End date</span>
+                  <input type="date" value={rangeEnd} onChange={e=>updateRangeEnd(e.target.value)} className="w-full min-w-0 rounded-lg border border-slate-200 px-3 py-2.5 text-sm bg-white" />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <p className="text-xs text-slate-500">Example: 25 Aug 2026 to 24 Sep 2026. The range can span multiple months.</p>
+                <button onClick={applyRange} className="w-full sm:w-auto rounded-lg bg-slate-900 text-white px-4 py-2.5 text-sm font-semibold">Apply range</button>
+              </div>
+            </div>}
+          </div>
+
           {cashFlowView==='overview' && <section className="bg-white rounded-2xl border p-5">
             <h2 className="font-bold mb-1">Financial Overview</h2>
-            <p className="text-sm text-slate-500 mb-5">Real data for {formatMonthKeyToName(month)}</p>
-            <MetricCards totalSpent={alerts.totalSpent} totalBudget={alerts.totalBudget} monthKey={month} transactionCount={monthExpenses.length}/>
+            <p className="text-sm text-slate-500 mb-5">Real data for {rangeEnabled ? `${formatDate(rangeStart)} to ${formatDate(rangeEnd)}` : formatMonthKeyToName(month)}</p>
+            <MetricCards totalSpent={periodAlerts.totalSpent} totalBudget={periodAlerts.totalBudget} monthKey={month} transactionCount={cashFlowExpenses.length}/>
           </section>}
 
           {cashFlowView==='budgets' && <section className="bg-white rounded-2xl border p-5">
@@ -333,16 +442,16 @@ export default function FinBookApp() {
 
           {cashFlowView==='analytics' && <section className="bg-white rounded-2xl border p-5">
             <h2 className="font-bold mb-1">Spending Analytics</h2>
-            <p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions.</p>
-            <ExpenseCharts currentMonthExpenses={monthExpenses} allExpenses={expenses} monthKey={month} budgetConfig={budget}/>
+            <p className="text-sm text-slate-500 mb-5">Charts are calculated from your saved transactions for the selected period.</p>
+            <ExpenseCharts currentMonthExpenses={cashFlowExpenses} allExpenses={cashFlowExpenses} monthKey={month} budgetConfig={budget}/>
           </section>}
 
           {cashFlowView==='transactions' && <section className="bg-white rounded-2xl border p-5">
             <div className="flex justify-between items-center mb-5 gap-3">
-              <div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records.</p></div>
+              <div><h2 className="font-bold">Transactions</h2><p className="text-sm text-slate-500">Your actual financial records for the selected period.</p></div>
               <div className="flex gap-2 shrink-0"><button onClick={exportCsv} className="border rounded-lg px-3 py-2 text-sm font-semibold">Export CSV</button><button onClick={()=>{setEditing(null);setModal(true)}} className="bg-slate-900 text-white rounded-lg px-3 py-2 text-sm font-semibold">Add transaction</button></div>
             </div>
-            <ExpenseList expenses={filter?monthExpenses.filter(e=>e.categoryId===filter):monthExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/>
+            <ExpenseList expenses={filter?cashFlowExpenses.filter(e=>e.categoryId===filter):cashFlowExpenses} onAddExpense={()=>{setEditing(null);setModal(true)}} onEditExpense={e=>{setEditing(e);setModal(true)}} onDeleteExpense={remove} selectedCategory={filter} onSelectCategory={setFilter} onExportCSV={exportCsv} onResetData={reset}/>
           </section>}
         </>}
 
