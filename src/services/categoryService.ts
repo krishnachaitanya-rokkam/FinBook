@@ -2,7 +2,7 @@ import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firesto
 import { Category } from '../types';
 import { firestore } from './firebase';
 
-export type CustomCategory = Category & { createdAt: number };
+export type CustomCategory = Omit<Category, 'id'> & { id: string; createdAt: number };
 
 // Keep custom categories directly under the authenticated user's document.
 // Firestore collection paths must contain an odd number of path segments.
