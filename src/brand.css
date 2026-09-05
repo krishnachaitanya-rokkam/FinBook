@@ -1,0 +1,16 @@
+/* The Mint View brand layer. Keeps the existing navigation and layout intact. */
+aside > div:first-child .h-10.w-10 {
+  background: #f0fdf4 url('/the-mint-view-icon.svg') center / 100% 100% no-repeat !important;
+  color: transparent !important;
+}
+aside > div:first-child .h-10.w-10 svg { display: none !important; }
+aside > div:first-child b { font-size: 0 !important; }
+aside > div:first-child b::after { content: 'The Mint View'; font-size: 1.125rem; }
+aside > div:first-child p { font-size: 0 !important; }
+aside > div:first-child p::after { content: 'A clearer view of your money.'; font-size: .75rem; }
+header .md\\:hidden.min-w-0 b { font-size: 0 !important; }
+header .md\\:hidden.min-w-0 b::after { content: 'The Mint View'; font-size: 1.125rem; }
+#root h1 { font-size: 0 !important; }
+#root h1::after { content: 'The Mint View'; font-size: 1.875rem; }
+#root h1 + p { font-size: 0 !important; }
+#root h1 + p::after { content: 'A clearer view of your money.'; font-size: .875rem; }
