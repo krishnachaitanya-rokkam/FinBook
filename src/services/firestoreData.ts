@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, setDoc } from 'firebase/firestore';
 import { Expense, Income, MonthBudgetConfig } from '../types';
 import { firestore } from './firebase';
 
@@ -7,6 +7,15 @@ const cacheKey = (uid: string) => `finbook-data-${uid}-v2`;
 
 type UserData = { expenses: Expense[]; incomes: Income[]; budgets: Record<string, MonthBudgetConfig> };
 type RecurringItem = { id: string; title: string; type: 'income' | 'expense' | 'bill'; amount: number; day: number; month?: number; frequency: 'monthly' | 'yearly'; autoRecord: boolean; active: boolean };
+
+export type CloudStorageUsage = {
+  expenses: number;
+  incomes: number;
+  budgets: number;
+  recurring: number;
+  portfolio: number;
+  totalBytes: number;
+};
 
 function stripUndefined<T>(value: T): T {
   if (Array.isArray(value)) return value.map((item) => stripUndefined(item)) as T;
@@ -20,6 +29,29 @@ function stripUndefined<T>(value: T): T {
 const normalizeExpense = (expense: Expense) => stripUndefined(expense);
 const normalizeIncome = (income: Income) => stripUndefined(income);
 
+function estimateBytes(value: unknown): number {
+  try { return new TextEncoder().encode(JSON.stringify(stripUndefined(value))).byteLength; } catch { return 0; }
+}
+
+export async function getApproximateStorageUsage(uid: string): Promise<CloudStorageUsage> {
+  const [expensesSnap, incomesSnap, budgetsSnap, recurringSnap, portfolioSnap] = await Promise.all([
+    getDocs(collection(userRoot(uid), 'expenses')),
+    getDocs(collection(userRoot(uid), 'incomes')),
+    getDocs(collection(userRoot(uid), 'budgets')),
+    getDocs(collection(userRoot(uid), 'recurring')),
+    getDoc(doc(userRoot(uid), 'portfolio', 'config')),
+  ]);
+
+  const sumDocs = (snap: { docs: Array<{ data: () => unknown }> }) => snap.docs.reduce((total, item) => total + estimateBytes(item.data()), 0);
+  const expenses = sumDocs(expensesSnap);
+  const incomes = sumDocs(incomesSnap);
+  const budgets = sumDocs(budgetsSnap);
+  const recurring = sumDocs(recurringSnap);
+  const portfolio = portfolioSnap.exists() ? estimateBytes(portfolioSnap.data()) : 0;
+
+  return { expenses, incomes, budgets, recurring, portfolio, totalBytes: expenses + incomes + budgets + recurring + portfolio };
+}
+
 function readCache(uid: string): UserData | null {
   try {
     const raw = localStorage.getItem(cacheKey(uid));
@@ -30,8 +62,6 @@ function readCache(uid: string): UserData | null {
   } catch { return null; }
 }
 function writeCache(uid: string, data: UserData) { try { localStorage.setItem(cacheKey(uid), JSON.stringify(stripUndefined(data))); } catch {} }
-
-const dateString = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 function getDueDate(item: RecurringItem, now = new Date()): string | null {
   if (!item.active || !item.autoRecord || !Number.isFinite(item.amount) || item.amount <= 0) return null;
@@ -57,45 +87,21 @@ async function processDueRecurringItems(uid: string) {
       const item = { id: snap.id, ...snap.data() } as RecurringItem;
       const dueDate = getDueDate(item, today);
       if (!dueDate) return;
-
-      // Deterministic ID makes the operation idempotent across multiple devices/tabs.
       const occurrenceId = `recurring-${item.id}-${dueDate}`;
       const ref = doc(userRoot(uid), item.type === 'income' ? 'incomes' : 'expenses', occurrenceId);
       const createdAt = Date.now();
-
       if (item.type === 'income') {
-        const income: Income = {
-          id: occurrenceId,
-          title: item.title,
-          amount: item.amount,
-          date: dueDate,
-          source: 'Recurring',
-          notes: `Automatically recorded from recurring item: ${item.title}`,
-          createdAt,
-        };
+        const income: Income = { id: occurrenceId, title: item.title, amount: item.amount, date: dueDate, source: 'Recurring', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt };
         writes.push(setDoc(ref, stripUndefined(income), { merge: false }));
       } else {
         const title = item.title.toLowerCase();
-        const categoryId: Expense['categoryId'] = item.type === 'bill'
-          ? 'utilities'
-          : /(sip|mutual fund|investment|stocks|nps|ppf|epf)/i.test(title) ? 'investment' : 'other';
-        const expense: Expense = {
-          id: occurrenceId,
-          title: item.title,
-          amount: item.amount,
-          categoryId,
-          date: dueDate,
-          paymentMethod: 'bank_transfer',
-          notes: `Automatically recorded from recurring item: ${item.title}`,
-          createdAt,
-        };
+        const categoryId: Expense['categoryId'] = item.type === 'bill' ? 'utilities' : /(sip|mutual fund|investment|stocks|nps|ppf|epf)/i.test(title) ? 'investment' : 'other';
+        const expense: Expense = { id: occurrenceId, title: item.title, amount: item.amount, categoryId, date: dueDate, paymentMethod: 'bank_transfer', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt };
         writes.push(setDoc(ref, stripUndefined(expense), { merge: false }));
       }
     });
     await Promise.all(writes);
-  } catch (error) {
-    console.error('Recurring auto-record error:', error);
-  }
+  } catch (error) { console.error('Recurring auto-record error:', error); }
 }
 
 export function subscribeToUserData(uid: string, onChange: (data: UserData) => void, onError?: (error: Error) => void): () => void {
@@ -108,29 +114,13 @@ export function subscribeToUserData(uid: string, onChange: (data: UserData) => v
   let recurringProcessed = false;
   const publish = () => {
     if (!expensesReady || !incomesReady || !budgetsReady) return;
-    const data: UserData = {
-      expenses: expenses.map(normalizeExpense).sort((a,b)=>b.date.localeCompare(a.date)),
-      incomes: incomes.map(normalizeIncome).sort((a,b)=>b.date.localeCompare(a.date)),
-      budgets: stripUndefined(budgets),
-    };
+    const data: UserData = { expenses: expenses.map(normalizeExpense).sort((a,b)=>b.date.localeCompare(a.date)), incomes: incomes.map(normalizeIncome).sort((a,b)=>b.date.localeCompare(a.date)), budgets: stripUndefined(budgets) };
     writeCache(uid, data); onChange(data);
-    if (!recurringProcessed) {
-      recurringProcessed = true;
-      void processDueRecurringItems(uid);
-    }
+    if (!recurringProcessed) { recurringProcessed = true; void processDueRecurringItems(uid); }
   };
-  const unsubscribeExpenses = onSnapshot(collection(userRoot(uid), 'expenses'), snapshot => {
-    expenses = snapshot.docs.map(d => normalizeExpense(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date));
-    expensesReady = true; publish();
-  }, error => onError?.(error));
-  const unsubscribeIncomes = onSnapshot(collection(userRoot(uid), 'incomes'), snapshot => {
-    incomes = snapshot.docs.map(d => normalizeIncome(d.data() as Income)).sort((a,b)=>b.date.localeCompare(a.date));
-    incomesReady = true; publish();
-  }, error => onError?.(error));
-  const unsubscribeBudgets = onSnapshot(collection(userRoot(uid), 'budgets'), snapshot => {
-    budgets = {}; snapshot.docs.forEach(d => { budgets[d.id] = d.data() as MonthBudgetConfig; });
-    budgetsReady = true; publish();
-  }, error => onError?.(error));
+  const unsubscribeExpenses = onSnapshot(collection(userRoot(uid), 'expenses'), snapshot => { expenses = snapshot.docs.map(d => normalizeExpense(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); expensesReady = true; publish(); }, error => onError?.(error));
+  const unsubscribeIncomes = onSnapshot(collection(userRoot(uid), 'incomes'), snapshot => { incomes = snapshot.docs.map(d => normalizeIncome(d.data() as Income)).sort((a,b)=>b.date.localeCompare(a.date)); incomesReady = true; publish(); }, error => onError?.(error));
+  const unsubscribeBudgets = onSnapshot(collection(userRoot(uid), 'budgets'), snapshot => { budgets = {}; snapshot.docs.forEach(d => { budgets[d.id] = d.data() as MonthBudgetConfig; }); budgetsReady = true; publish(); }, error => onError?.(error));
   return () => { unsubscribeExpenses(); unsubscribeIncomes(); unsubscribeBudgets(); };
 }
 
@@ -140,9 +130,7 @@ export async function saveIncome(uid: string, income: Income) { const normalized
 export async function removeIncome(uid: string, id: string) { await deleteDoc(doc(userRoot(uid),'incomes',id)); }
 export async function saveBudget(uid: string, budget: MonthBudgetConfig) { await setDoc(doc(userRoot(uid),'budgets',budget.monthKey),stripUndefined(budget)); }
 export async function clearUserData(uid: string) {
-  const [expenseSnap, incomeSnap, budgetSnap] = await Promise.all([
-    getDocs(collection(userRoot(uid),'expenses')), getDocs(collection(userRoot(uid),'incomes')), getDocs(collection(userRoot(uid),'budgets')),
-  ]);
+  const [expenseSnap, incomeSnap, budgetSnap] = await Promise.all([getDocs(collection(userRoot(uid),'expenses')), getDocs(collection(userRoot(uid),'incomes')), getDocs(collection(userRoot(uid),'budgets'))]);
   await Promise.all([...expenseSnap.docs.map(d=>deleteDoc(d.ref)), ...incomeSnap.docs.map(d=>deleteDoc(d.ref)), ...budgetSnap.docs.map(d=>deleteDoc(d.ref))]);
   writeCache(uid,{expenses:[],incomes:[],budgets:{}});
 }
