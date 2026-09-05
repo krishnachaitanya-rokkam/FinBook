@@ -7,34 +7,89 @@
 
 html, body, #root { min-height: 100%; }
 html { overflow-x: hidden; }
-body { margin: 0; font-family: var(--font-sans); color: #27324a; background-color: #f7f8fc; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: #172033;
+  background: #f5f7fb;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-.bg-slate-50 { background-color: #f7f8fc !important; }
-.bg-slate-100 { background-color: #f1f2f8 !important; }
-.bg-slate-200 { background-color: #e7e8f0 !important; }
-.bg-slate-900 { background-color: #4b46b8 !important; }
-.bg-white { background-color: #fffefd !important; }
-.text-slate-900 { color: #27324a !important; }
-.text-slate-800 { color: #34415c !important; }
-.text-slate-700 { color: #4b5874 !important; }
-.text-slate-600 { color: #66738f !important; }
-.text-slate-500 { color: #7d879c !important; }
-.text-slate-400 { color: #9aa3b5 !important; }
-.text-slate-300 { color: #b9c0ce !important; }
-.border-slate-100 { border-color: #eef0f5 !important; }
-.border-slate-200 { border-color: #e3e5ee !important; }
-.border-slate-300 { border-color: #d4d8e4 !important; }
-.hover\\:bg-slate-50:hover { background-color: #f3f4fa !important; }
-.hover\\:bg-slate-100:hover { background-color: #eef0f7 !important; }
-.hover\\:bg-slate-800:hover { background-color: #3f3a9e !important; }
-.hover\\:border-slate-200:hover { border-color: #d9dce8 !important; }
-.hover\\:border-slate-300:hover { border-color: #c8ccda !important; }
-.focus\\:border-slate-900:focus { border-color: #5b56c7 !important; }
-.focus\\:ring-slate-900:focus { --tw-ring-color: #5b56c7 !important; }
+
+/* Modern fintech palette — layout and menu structure remain unchanged. */
+.bg-slate-50 { background-color: #f5f7fb !important; }
+.bg-slate-100 { background-color: #eef1f6 !important; }
+.bg-slate-200 { background-color: #e3e7ef !important; }
+.bg-slate-900 { background-color: #5146e5 !important; }
+.bg-white { background-color: #ffffff !important; }
+.text-slate-900 { color: #172033 !important; }
+.text-slate-800 { color: #253047 !important; }
+.text-slate-700 { color: #46536b !important; }
+.text-slate-600 { color: #66738a !important; }
+.text-slate-500 { color: #7d889d !important; }
+.text-slate-400 { color: #9aa4b6 !important; }
+.text-slate-300 { color: #c0c7d3 !important; }
+.border-slate-100 { border-color: #eef1f5 !important; }
+.border-slate-200 { border-color: #e4e8ef !important; }
+.border-slate-300 { border-color: #d5dae4 !important; }
+.hover\\:bg-slate-50:hover { background-color: #f1f3f8 !important; }
+.hover\\:bg-slate-100:hover { background-color: #e9edf4 !important; }
+.hover\\:bg-slate-800:hover { background-color: #4338ca !important; }
+.hover\\:border-slate-200:hover { border-color: #d9dee8 !important; }
+.hover\\:border-slate-300:hover { border-color: #c9cfdb !important; }
+.focus\\:border-slate-900:focus { border-color: #6d63f2 !important; }
+.focus\\:ring-slate-900:focus { --tw-ring-color: #6d63f2 !important; }
+
+/* Fintech surfaces: crisp cards, restrained borders and soft elevation. */
+main > section,
+main > div > section,
+main > div > div {
+  border-color: #e7eaf1;
+}
+
+main > section,
+#metric-summary-grid > div,
+#expense-charts-card,
+[id$="-modal-dialog"] {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03), 0 8px 24px rgba(15, 23, 42, 0.045);
+}
+
+button {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+button.bg-slate-900,
+button[class*="bg-indigo-"],
+button[class*="bg-violet-"] {
+  box-shadow: 0 5px 14px rgba(81, 70, 229, 0.20);
+}
+
+button.bg-slate-900:hover,
+button[class*="bg-indigo-"]:hover,
+button[class*="bg-violet-"]:hover {
+  box-shadow: 0 7px 18px rgba(81, 70, 229, 0.26);
+  transform: translateY(-1px);
+}
+
+input, select, textarea {
+  border-color: #dfe4ed !important;
+  background-color: #ffffff !important;
+  color: #172033 !important;
+}
+
+input::placeholder, textarea::placeholder { color: #9aa4b6; }
+input:focus, select:focus, textarea:focus {
+  border-color: #6d63f2 !important;
+  box-shadow: 0 0 0 3px rgba(109, 99, 242, 0.10) !important;
+  outline: none;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c9ccda; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #abb1c3; }
+::-webkit-scrollbar-thumb { background: #cbd1dc; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #aeb6c5; }
 
 /* Responsive finance-app layout: compact on phones, balanced on desktop. */
 main > section { padding: 16px !important; }
@@ -77,6 +132,6 @@ main > section { padding: 16px !important; }
 /* Safety net for the old floating Recurring action from the previous UI. */
 button[class*="fixed"][class*="bottom-"] { display: none !important; }
 
-/* Transactions use a neutral receipt/list glyph instead of a currency symbol. */
+/* Keep the current neutral Transactions receipt/list glyph. */
 button:has(svg.lucide-receipt) > svg.lucide-receipt { display: none !important; }
 button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; line-height: 1; font-weight: 500; }
