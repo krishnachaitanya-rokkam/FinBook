@@ -184,6 +184,16 @@ textarea {
     width: 100%;
     max-width: 100%;
   }
+
+  /* Scale the donut's center total down on phones so long rupee values stay inside the ring. */
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type {
+    font-size: clamp(14px, 4.2vw, 18px) !important;
+    font-weight: 700 !important;
+  }
+
+  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) {
+    font-size: 10px !important;
+  }
 }
 
 @media (max-width: 380px) {
@@ -199,5 +209,9 @@ textarea {
   main > div:first-child button {
     padding-left: 10px !important;
     padding-right: 10px !important;
+  }
+
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type {
+    font-size: 14px !important;
   }
 }
