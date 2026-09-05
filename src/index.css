@@ -74,7 +74,5 @@ main > section { padding: 16px !important; }
   #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: 14px !important; }
 }
 
-/* The transaction tab should show only its label, not the live record count. */
-main > div:first-child > button:last-child { font-size: 0 !important; }
-main > div:first-child > button:last-child svg { flex-shrink: 0; }
-main > div:first-child > button:last-child::after { content: 'Transactions'; font-size: 14px; font-weight: 600; }
+/* Safety net for the old floating Recurring action from the previous UI. */
+button[class*="fixed"][class*="bottom-"] { display: none !important; }
