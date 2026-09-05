@@ -65,17 +65,20 @@ button[class*="fixed"][class*="bottom-"] { display:none !important; }
 button:has(svg.lucide-receipt) > svg.lucide-receipt { display:none !important; }
 button:has(svg.lucide-receipt)::before { content:'▤'; font-size:1.25rem; line-height:1; font-weight:500; }
 
-/* The Mint View: graph logo replaces the FinBook branding in sidebar and mobile header. */
+/* The Mint View branding. */
 aside > div:first-child .h-10.w-10 { background:#f0fdf4 url('/the-mint-view-icon.svg') center / 100% 100% no-repeat !important; color:transparent !important; border-radius:12px !important; }
 aside > div:first-child .h-10.w-10 svg { display:none !important; }
 aside > div:first-child b { font-size:0 !important; }
 aside > div:first-child b::after { content:'The Mint View'; font-size:1.125rem; }
 aside > div:first-child p { font-size:0 !important; }
 aside > div:first-child p::after { content:'A clearer view of your money.'; font-size:.75rem; }
-header .md\\:hidden.min-w-0 { display:flex; align-items:center; gap:8px; }
-header .md\\:hidden.min-w-0::before { content:''; width:34px; height:34px; flex:0 0 34px; background:url('/the-mint-view-icon.svg') center / 100% 100% no-repeat; border-radius:9px; }
-header .md\\:hidden.min-w-0 b { font-size:0 !important; }
-header .md\\:hidden.min-w-0 b::after { content:'The Mint View'; font-size:1.125rem; }
+
+/* Mobile header: directly replace the existing FinBook text with the graph logo and name. */
+@media (max-width:767px) {
+  header b { font-size:0 !important; display:flex !important; align-items:center; gap:8px; }
+  header b::before { content:''; width:34px; height:34px; flex:0 0 34px; background:url('/the-mint-view-icon.svg') center / 100% 100% no-repeat; border-radius:9px; }
+  header b::after { content:'The Mint View'; font-size:1.125rem; line-height:1.2; color:#172033; }
+}
 #root h1 { font-size:0 !important; }
 #root h1::after { content:'The Mint View'; font-size:1.875rem; }
 #root h1 + p { font-size:0 !important; }
