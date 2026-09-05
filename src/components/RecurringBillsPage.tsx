@@ -8,30 +8,11 @@ interface Props { userId?: string; }
 const blank:Omit<RecurringItem,'id'>={title:'',type:'expense',amount:0,day:1,frequency:'monthly',autoRecord:true,reminder:true,active:true};
 const money=(n:number)=>`₹${n.toLocaleString('en-IN',{maximumFractionDigits:0})}`;
 const storageKey=(uid?:string)=>`finbook-recurring-${uid||'local'}-v1`;
-
 export const RecurringBillsPage:React.FC<Props>=({userId})=>{
  const [items,setItems]=useState<RecurringItem[]>([]),[editing,setEditing]=useState<RecurringItem|null>(null),[form,setForm]=useState<Omit<RecurringItem,'id'>>(blank),[show,setShow]=useState(false),[error,setError]=useState('');
- useEffect(()=>{
-   if(!userId){setItems([]);return;}
-   const ref=collection(db,'users',userId,'recurring');
-   return onSnapshot(ref,snapshot=>{
-     const next=snapshot.docs.map(d=>({id:d.id,...d.data()} as RecurringItem));
-     setItems(next);
-     try{localStorage.setItem(storageKey(userId),JSON.stringify(next));}catch{}
-   },()=>{
-     try{const raw=localStorage.getItem(storageKey(userId));if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))setItems(parsed);}}catch{}
-   });
- },[userId]);
+ useEffect(()=>{if(!userId){setItems([]);return;}const ref=collection(db,'users',userId,'recurring');return onSnapshot(ref,snapshot=>{const next=snapshot.docs.map(d=>({id:d.id,...d.data()} as RecurringItem));setItems(next);try{localStorage.setItem(storageKey(userId),JSON.stringify(next));}catch{}},()=>{try{const raw=localStorage.getItem(storageKey(userId));if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))setItems(parsed);}}catch{}});},[userId]);
  const open=(item?:RecurringItem)=>{setEditing(item||null);setForm(item?{...item}:blank);setError('');setShow(true)};
- const submit=async(e:React.FormEvent)=>{
-   e.preventDefault();
-   if(!form.title.trim()){setError('Enter a name for this recurring item.');return;}
-   if(!Number.isFinite(form.amount)||form.amount<=0){setError('Enter an amount greater than ₹0.');return;}
-   if(!userId){setError('Please sign in before saving recurring items.');return;}
-   const item={...form,amount:Math.round(form.amount*100)/100,id:editing?.id||`rec-${Date.now()}`};
-   try{await setDoc(doc(db,'users',userId,'recurring',item.id),item);setShow(false);}
-   catch{setError('Could not save this recurring item. Please try again.');}
- };
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();if(!form.title.trim()){setError('Enter a name for this recurring item.');return;}if(!Number.isFinite(form.amount)||form.amount<=0){setError('Enter an amount greater than ₹0.');return;}if(!userId){setError('Please sign in before saving recurring items.');return;}const item={...form,amount:Math.round(form.amount*100)/100,id:editing?.id||`rec-${Date.now()}`};try{await setDoc(doc(db,'users',userId,'recurring',item.id),item);setShow(false);}catch{setError('Could not save this recurring item. Please try again.');}};
  const remove=async(id:string)=>{if(!confirm('Delete this recurring item?')||!userId)return;try{await deleteDoc(doc(db,'users',userId,'recurring',id));}catch{setError('Could not delete this recurring item. Please try again.');}};
  const monthlyOutflow=useMemo(()=>items.filter(i=>i.active&&i.frequency==='monthly'&&i.type!=='income').reduce((s,i)=>s+i.amount,0),[items]);
  const monthlyIncome=useMemo(()=>items.filter(i=>i.active&&i.frequency==='monthly'&&i.type==='income').reduce((s,i)=>s+i.amount,0),[items]);
