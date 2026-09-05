@@ -27,8 +27,18 @@ export interface Expense {
   title: string;
   amount: number;
   categoryId: CategoryId;
-  date: string; // YYYY-MM-DD
+  date: string;
   paymentMethod: PaymentMethod;
+  notes?: string;
+  createdAt: number;
+}
+
+export interface Income {
+  id: string;
+  title: string;
+  amount: number;
+  date: string;
+  source?: string;
   notes?: string;
   createdAt: number;
 }
@@ -39,7 +49,7 @@ export interface CategoryBudget {
 }
 
 export interface MonthBudgetConfig {
-  monthKey: string; // YYYY-MM
+  monthKey: string;
   overallBudget: number;
   categoryBudgets: Record<CategoryId, number>;
 }
