@@ -11,6 +11,14 @@ interface IncomeModalProps {
   defaultDate?: string;
 }
 
+const getFinancialCycleStart = (dateString?: string) => {
+  const base = dateString ? new Date(`${dateString}T12:00:00`) : new Date();
+  const day = base.getDate();
+  const previousMonth = new Date(base.getFullYear(), base.getMonth() - 1, 1);
+  const lastDay = new Date(previousMonth.getFullYear(), previousMonth.getMonth() + 1, 0).getDate();
+  return `${previousMonth.getFullYear()}-${String(previousMonth.getMonth() + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+};
+
 const inputClass = 'box-border block w-full min-w-0 max-w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900';
 
 export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSave, editingIncome, defaultDate }) => {
@@ -31,7 +39,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSav
     } else {
       setTitle('Salary');
       setAmount('');
-      setDate(defaultDate || getTodayDateString());
+      setDate(getFinancialCycleStart(defaultDate || getTodayDateString()));
       setSource('Salary');
       setNotes('');
     }
@@ -88,14 +96,14 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSav
             <label className="block min-w-0 text-xs font-semibold text-slate-700">
               Amount (₹) *
               <div className="relative mt-1 min-w-0">
-                <IndianRupee className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input autoFocus type="number" inputMode="decimal" step="0.01" min="0.01" value={amount} onChange={e => setAmount(e.target.value)} className={`${inputClass} pl-9 font-bold`} placeholder="0.00" />
               </div>
             </label>
             <label className="block min-w-0 text-xs font-semibold text-slate-700">
               Received date *
               <div className="relative mt-1 min-w-0">
-                <Calendar className="pointer-events-none absolute left-3 top-3 z-10 h-4 w-4 text-slate-400" />
+                <Calendar className="absolute left-3 top-3 z-10 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} className={`${inputClass} appearance-none pl-9 pr-2`} />
               </div>
             </label>
@@ -118,7 +126,7 @@ export const IncomeModal: React.FC<IncomeModalProps> = ({ isOpen, onClose, onSav
 
           <div className="flex min-w-0 shrink-0 flex-col-reverse gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={onClose} className="box-border w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-semibold sm:w-auto">Cancel</button>
-            <button type="submit" className="box-border w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white sm:w-auto">{editingIncome ? 'Save Changes' : 'Record Income'}</button>
+            <button type="submit" className="box-border w-full rounded-lg bg-indigo-600 text-white px-4 py-2.5 text-sm font-semibold sm:w-auto">{editingIncome ? 'Save Changes' : 'Record Income'}</button>
           </div>
         </form>
       </div>
