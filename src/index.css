@@ -5,16 +5,8 @@
   --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-html,
-body,
-#root {
-  min-height: 100%;
-}
-
-html {
-  overflow-x: hidden;
-}
-
+html, body, #root { min-height: 100%; }
+html { overflow-x: hidden; }
 body {
   margin: 0;
   font-family: var(--font-sans);
@@ -24,22 +16,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 
-button,
-a,
-input,
-select,
-textarea {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* FinBook visual theme: soft lavender canvas, warm white surfaces, indigo primary. */
 .bg-slate-50 { background-color: #f7f8fc !important; }
 .bg-slate-100 { background-color: #f1f2f8 !important; }
 .bg-slate-200 { background-color: #e7e8f0 !important; }
 .bg-slate-900 { background-color: #4b46b8 !important; }
 .bg-white { background-color: #fffefd !important; }
-
 .text-slate-900 { color: #27324a !important; }
 .text-slate-800 { color: #34415c !important; }
 .text-slate-700 { color: #4b5874 !important; }
@@ -47,171 +30,98 @@ textarea {
 .text-slate-500 { color: #7d879c !important; }
 .text-slate-400 { color: #9aa3b5 !important; }
 .text-slate-300 { color: #b9c0ce !important; }
-
 .border-slate-100 { border-color: #eef0f5 !important; }
 .border-slate-200 { border-color: #e3e5ee !important; }
 .border-slate-300 { border-color: #d4d8e4 !important; }
-
 .hover\\:bg-slate-50:hover { background-color: #f3f4fa !important; }
 .hover\\:bg-slate-100:hover { background-color: #eef0f7 !important; }
 .hover\\:bg-slate-800:hover { background-color: #3f3a9e !important; }
 .hover\\:border-slate-200:hover { border-color: #d9dce8 !important; }
 .hover\\:border-slate-300:hover { border-color: #c8ccda !important; }
-
 .focus\\:border-slate-900:focus { border-color: #5b56c7 !important; }
 .focus\\:ring-slate-900:focus { --tw-ring-color: #5b56c7 !important; }
 
-/* Keep destructive / status colors distinct from the primary theme. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c9ccda; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #abb1c3; }
 
-/* Custom scrollbars for professional polish */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c9ccda;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #abb1c3;
-}
-
-/* Mobile layout refinements */
+/* Compact, responsive finance-app layout. */
 @media (max-width: 640px) {
   header > div {
-    width: 100%;
-    box-sizing: border-box;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    padding-top: 10px !important;
-    padding-bottom: 10px !important;
+    width: 100%; box-sizing: border-box;
+    padding: 8px 10px !important;
     flex-direction: column;
     align-items: stretch !important;
-    gap: 10px !important;
+    gap: 7px !important;
   }
-
-  /* Keep the mobile menu and FinBook brand anchored to the left. */
   header > div > div:first-child {
     justify-content: flex-start;
-    min-width: 0;
-    width: 100%;
+    min-width: 0; width: 100%;
   }
-
   header > div > div:last-child {
-    width: 100%;
-    min-width: 0;
+    width: 100%; min-width: 0;
     justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px !important;
+    flex-wrap: nowrap;
+    gap: 4px !important;
   }
-
   header > div > div:last-child > button,
-  header > div > div:last-child > div {
-    flex-shrink: 0;
-  }
+  header > div > div:last-child > div { flex-shrink: 0; }
 
   main {
-    width: 100%;
-    box-sizing: border-box;
-    padding-left: 12px !important;
-    padding-right: 12px !important;
-    padding-top: 16px !important;
-    padding-bottom: 24px !important;
+    width: 100%; box-sizing: border-box;
+    padding: 12px 10px 20px !important;
+    gap: 12px !important;
   }
 
-  /* Keep primary section navigation usable without squeezing labels. */
   main > div:first-child {
     flex-wrap: nowrap !important;
     overflow-x: auto;
     justify-content: flex-start !important;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    white-space: nowrap;
   }
+  main > div:first-child::-webkit-scrollbar { display: none; }
+  main > div:first-child button { flex-shrink: 0; }
 
-  main > div:first-child::-webkit-scrollbar {
-    display: none;
-  }
-
-  main > div:first-child > div:first-child {
-    flex-wrap: nowrap !important;
-    flex-shrink: 0;
-  }
-
-  main > div:first-child button {
-    flex-shrink: 0;
-  }
-
-  /* Section headers should wrap rather than compress controls into one line. */
+  main section { border-radius: 16px; }
   main section > div:first-child {
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: 12px;
+    gap: 9px;
   }
-
   main section > div:first-child > div:last-child {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
+    width: 100%; justify-content: flex-start; flex-wrap: wrap;
   }
 
-  main section {
-    border-radius: 16px;
-  }
+  /* Reduce nested-card padding and empty vertical space. */
+  #metric-summary-grid { gap: 8px !important; }
+  #metric-summary-grid > div { padding: 12px !important; border-radius: 14px; }
+  #expense-charts-card { width: 100%; max-width: 100%; }
+  #expense-charts-card > div:last-child { padding: 12px !important; }
 
-  /* Avoid iOS input zoom and make controls easier to tap. */
-  input,
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
-
-  /* Keep modals within the phone viewport. */
+  input, select, textarea { font-size: 16px !important; }
   [id$="-modal-dialog"] {
-    max-width: calc(100vw - 24px) !important;
-    max-height: calc(100vh - 24px);
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px);
     overflow-y: auto;
   }
 
-  #expense-charts-card,
-  #expenses-table-card {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  /* Scale the donut's center total down on phones so long rupee values stay inside the ring. */
   #expense-charts-card .recharts-wrapper > svg > text:first-of-type {
     font-size: clamp(14px, 4.2vw, 18px) !important;
     font-weight: 700 !important;
   }
+  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
+}
 
-  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) {
-    font-size: 10px !important;
-  }
+@media (min-width: 641px) {
+  main { gap: 16px; }
 }
 
 @media (max-width: 380px) {
-  header > div > div:first-child p {
-    display: none;
-  }
-
-  main {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
-  }
-
-  main > div:first-child button {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
-  }
-
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type {
-    font-size: 14px !important;
-  }
+  header > div > div:first-child p { display: none; }
+  main { padding-left: 8px !important; padding-right: 8px !important; }
+  main > div:first-child button { padding-left: 9px !important; padding-right: 9px !important; }
+  #metric-summary-grid > div { padding: 10px !important; }
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: 14px !important; }
 }
