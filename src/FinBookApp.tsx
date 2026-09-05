@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { IndianRupee, LogOut, Plus, Target, TrendingUp, Receipt, PieChart, ChevronLeft, ChevronRight, Calendar, WalletCards, Menu, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { Expense, MonthBudgetConfig, AuthUser } from './types';
 import { getDefaultBudgetsForMonth } from './data/initialData';
 import { CATEGORY_MAP, PAYMENT_METHOD_LABELS } from './data/categories';
@@ -12,13 +12,14 @@ import { ExpenseModal } from './components/ExpenseModal';
 import { BudgetManagerModal } from './components/BudgetManagerModal';
 import { ExpenseList } from './components/ExpenseList';
 import { PortfolioManager } from './components/PortfolioManager';
+import { SettingsPage } from './components/SettingsPage';
 import { SignInPage } from './components/SignInPage';
 import { firebaseAuth } from './services/firebase';
 import { subscribeToUserData, removeExpense, saveBudget, saveExpense, clearUserData } from './services/firestoreData';
 import { subscribeToPortfolio, savePortfolio, DEFAULT_PORTFOLIO_FIELDS, PortfolioConfig } from './services/portfolioService';
 import { logoutUser } from './services/authService';
 
-type Section = 'cashflow' | 'portfolio';
+type Section = 'cashflow' | 'portfolio' | 'settings';
 type CashFlowView = 'overview' | 'budgets' | 'analytics' | 'transactions';
 
 export default function FinBookApp() {
@@ -251,6 +252,10 @@ export default function FinBookApp() {
           <WalletCards className="h-4 w-4 shrink-0"/>
           {(!sidebarCollapsed || mobile) && <span>Portfolio</span>}
         </button>
+        <button onClick={()=>navigate('settings')} title={sidebarCollapsed && !mobile ? 'Settings' : undefined} className={`w-full flex items-center ${sidebarCollapsed && !mobile ? 'justify-center' : 'gap-2'} rounded-xl px-3 py-3 text-sm font-bold ${section==='settings'?'bg-slate-900 text-white':'text-slate-700 hover:bg-slate-50'}`}>
+          <Settings className="h-4 w-4 shrink-0"/>
+          {(!sidebarCollapsed || mobile) && <span>Settings</span>}
+        </button>
       </nav>
 
       <div className="mt-auto">
@@ -282,17 +287,19 @@ export default function FinBookApp() {
           <div className="flex items-center gap-2 min-w-0">
             <button onClick={()=>setMobileNavOpen(true)} className="md:hidden p-2 rounded-lg border border-slate-200" aria-label="Open menu"><Menu className="h-4 w-4"/></button>
             <div className="md:hidden min-w-0"><b className="text-lg">FinBook</b></div>
-            <div className="hidden md:block text-sm font-semibold text-slate-500">{section==='portfolio'?'Portfolio':'Cash Flow'}</div>
+            <div className="hidden md:block text-sm font-semibold text-slate-500">{section==='portfolio'?'Portfolio':section==='settings'?'Settings':'Cash Flow'}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={()=>shiftMonth(-1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Previous month"><ChevronLeft className="h-4 w-4"/></button>
-            <button type="button" onClick={openMonthPicker} className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 cursor-pointer min-w-28 justify-center border border-transparent hover:border-slate-200" title="Choose month" aria-label={`Choose month, currently ${formatMonthKeyToName(month)}`}>
-              <Calendar className="h-4 w-4 text-slate-500 shrink-0"/>
-              <span className="text-sm font-semibold text-center pointer-events-none">{formatMonthKeyToName(month)}</span>
-              <input ref={monthPickerRef} type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute pointer-events-none opacity-0 w-px h-px" tabIndex={-1} />
-            </button>
-            <button onClick={()=>shiftMonth(1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Next month"><ChevronRight className="h-4 w-4"/></button>
-            <button onClick={()=>{setEditing(null);setModal(true)}} className="ml-1 flex items-center gap-1.5 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold"><Plus className="h-4 w-4"/><span className="hidden sm:inline">Add</span></button>
+            {section!=='settings' && <>
+              <button onClick={()=>shiftMonth(-1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Previous month"><ChevronLeft className="h-4 w-4"/></button>
+              <button type="button" onClick={openMonthPicker} className="relative flex items-center gap-1.5 rounded-lg px-2.5 py-2 hover:bg-slate-100 cursor-pointer min-w-28 justify-center border border-transparent hover:border-slate-200" title="Choose month" aria-label={`Choose month, currently ${formatMonthKeyToName(month)}`}>
+                <Calendar className="h-4 w-4 text-slate-500 shrink-0"/>
+                <span className="text-sm font-semibold text-center pointer-events-none">{formatMonthKeyToName(month)}</span>
+                <input ref={monthPickerRef} type="month" value={month} onChange={(e)=>handleMonthPickerChange(e.target.value)} aria-label="Choose month" className="absolute pointer-events-none opacity-0 w-px h-px" tabIndex={-1} />
+              </button>
+              <button onClick={()=>shiftMonth(1)} className="p-2 rounded-lg hover:bg-slate-100" aria-label="Next month"><ChevronRight className="h-4 w-4"/></button>
+              <button onClick={()=>{setEditing(null);setModal(true)}} className="ml-1 flex items-center gap-1.5 rounded-lg bg-slate-900 text-white px-3 py-2 text-sm font-semibold"><Plus className="h-4 w-4"/><span className="hidden sm:inline">Add</span></button>
+            </>}
             <button onClick={()=>logoutUser()} title="Sign out" aria-label="Sign out" className="p-2 rounded-lg border border-slate-200"><LogOut className="h-4 w-4"/></button>
           </div>
         </div>
@@ -340,6 +347,7 @@ export default function FinBookApp() {
         </>}
 
         {section==='portfolio' && <PortfolioManager config={portfolio} onSave={saveP}/>} 
+        {section==='settings' && <SettingsPage userName={user.name} email={user.email} onClearData={reset} onExportData={exportCsv}/>} 
       </main>
     </div>
 
