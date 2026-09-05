@@ -7,17 +7,8 @@
 
 html, body, #root { min-height: 100%; }
 html { overflow-x: hidden; }
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  color: #27324a;
-  background-color: #f7f8fc;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
-}
+body { margin: 0; font-family: var(--font-sans); color: #27324a; background-color: #f7f8fc; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden; }
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-
 .bg-slate-50 { background-color: #f7f8fc !important; }
 .bg-slate-100 { background-color: #f1f2f8 !important; }
 .bg-slate-200 { background-color: #e7e8f0 !important; }
@@ -40,77 +31,34 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .hover\\:border-slate-300:hover { border-color: #c8ccda !important; }
 .focus\\:border-slate-900:focus { border-color: #5b56c7 !important; }
 .focus\\:ring-slate-900:focus { --tw-ring-color: #5b56c7 !important; }
-
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #c9ccda; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover { background: #abb1c3; }
 
-/* Compact, responsive finance-app layout. */
+/* Responsive finance-app layout: compact on phones, balanced on desktop. */
+main > section { padding: 16px !important; }
+
 @media (max-width: 640px) {
-  header > div {
-    width: 100%; box-sizing: border-box;
-    padding: 8px 10px !important;
-    flex-direction: column;
-    align-items: stretch !important;
-    gap: 7px !important;
-  }
-  header > div > div:first-child {
-    justify-content: flex-start;
-    min-width: 0; width: 100%;
-  }
-  header > div > div:last-child {
-    width: 100%; min-width: 0;
-    justify-content: space-between;
-    flex-wrap: nowrap;
-    gap: 4px !important;
-  }
-  header > div > div:last-child > button,
-  header > div > div:last-child > div { flex-shrink: 0; }
-
-  main {
-    width: 100%; box-sizing: border-box;
-    padding: 12px 10px 20px !important;
-    gap: 12px !important;
-  }
-
-  main > div:first-child {
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    justify-content: flex-start !important;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
+  header > div { width: 100%; box-sizing: border-box; padding: 8px 10px !important; flex-direction: column; align-items: stretch !important; gap: 7px !important; }
+  header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
+  header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
+  header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
+  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; }
+  main > div:first-child { flex-wrap: nowrap !important; overflow-x: auto; justify-content: flex-start !important; scrollbar-width: none; -ms-overflow-style: none; }
   main > div:first-child::-webkit-scrollbar { display: none; }
   main > div:first-child button { flex-shrink: 0; }
-
-  main section { border-radius: 16px; }
-  main section > div:first-child {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 9px;
-  }
-  main section > div:first-child > div:last-child {
-    width: 100%; justify-content: flex-start; flex-wrap: wrap;
-  }
-
-  /* Reduce nested-card padding and empty vertical space. */
+  main > section { padding: 12px !important; border-radius: 16px; }
+  main section > div:first-child { flex-wrap: wrap; align-items: flex-start; gap: 9px; }
+  main section > div:first-child > div:last-child { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   #metric-summary-grid { gap: 8px !important; }
   #metric-summary-grid > div { padding: 12px !important; border-radius: 14px; }
   #expense-charts-card { width: 100%; max-width: 100%; }
-  #expense-charts-card > div:last-child { padding: 12px !important; }
-
+  #expense-charts-card > div:first-child { padding: 12px !important; }
+  #expense-charts-card > div:last-child { padding: 10px !important; }
   input, select, textarea { font-size: 16px !important; }
-  [id$="-modal-dialog"] {
-    max-width: calc(100vw - 20px) !important;
-    max-height: calc(100vh - 20px);
-    overflow-y: auto;
-  }
-
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type {
-    font-size: clamp(14px, 4.2vw, 18px) !important;
-    font-weight: 700 !important;
-  }
+  [id$="-modal-dialog"] { max-width: calc(100vw - 20px) !important; max-height: calc(100vh - 20px); overflow-y: auto; }
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: clamp(14px, 4.2vw, 18px) !important; font-weight: 700 !important; }
   #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
 }
 
