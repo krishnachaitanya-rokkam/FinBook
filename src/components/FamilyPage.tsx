@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Copy, Check, ShieldCheck, Wallet, TrendingUp, X, LogOut } from 'lucide-react';
+import { Users, UserPlus, Copy, Check, ShieldCheck, LogOut } from 'lucide-react';
 import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { firebaseAuth, firestore } from '../services/firebase';
 import { subscribeToUserData } from '../services/firestoreData';
@@ -8,7 +8,7 @@ import { subscribeToPortfolio } from '../services/portfolioService';
 interface FamilyPageProps { userName: string; email: string; }
 type Role = 'owner' | 'member' | 'viewer';
 type FamilyMember = { name: string; email: string; role: Role; joinedAt: number };
-type FamilyDoc = { name: string; ownerId: string; memberIds: string[]; members: Record<string, FamilyMember>; createdAt: number };
+type FamilyDoc = { name: string; ownerId: string; memberIds: string[]; members: Record<string, FamilyMember>; createdAt: number; acceptedInviteCode?: string };
 type FamilySummary = { name: string; email: string; income: number; spending: number; savings: number; netWorth: number; updatedAt: number };
 
 const familyLinkDoc = (uid:string) => doc(firestore, 'users', uid, 'family', 'link');
@@ -53,7 +53,7 @@ export function FamilyPage({userName,email}:FamilyPageProps){
       const income=data.incomes.filter(i=>i.date.startsWith(key)).reduce((s,i)=>s+i.amount,0);
       const spending=data.expenses.filter(e=>e.date.startsWith(key)).reduce((s,e)=>s+e.amount,0);
       setPersonal(p=>({...p,income,spending}));
-      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,income,spending,savings:income-spending,netWorth:p.netWorth,updatedAt:Date.now()},{merge:true});}
+      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,income,spending,savings:income-spending,netWorth:personal.netWorth,updatedAt:Date.now()},{merge:true});}
     });
     stopPortfolio=subscribeToPortfolio(uid,data=>{
       const portfolioAssets=data.fields.reduce((s,f)=>s+(Number(f.amount)||0),0);
@@ -107,9 +107,9 @@ export function FamilyPage({userName,email}:FamilyPageProps){
       const data=target.data() as FamilyDoc;
       if(data.memberIds.includes(uid))throw new Error('You are already in this family.');
       const member:FamilyMember={name:userName,email,role:'member',joinedAt:Date.now()};
-      await updateDoc(familyDoc(targetId),{memberIds:[...data.memberIds,uid],members:{...data.members,[uid]:member}});
-      await setDoc(familyLinkDoc(uid),{familyId:targetId,role:'member',updatedAt:Date.now()});
       await updateDoc(inviteDoc(code),{status:'accepted',acceptedBy:uid,acceptedAt:Date.now()});
+      await updateDoc(familyDoc(targetId),{memberIds:[...data.memberIds,uid],members:{...data.members,[uid]:member},acceptedInviteCode:code});
+      await setDoc(familyLinkDoc(uid),{familyId:targetId,role:'member',updatedAt:Date.now()});
       setJoinCode('');setMessage(`Joined ${data.name}.`);
     }catch(error:any){setMessage(error?.message||'Could not join family.');}finally{setBusy(false);}
   };
