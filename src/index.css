@@ -44,13 +44,13 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .border-slate-100 { border-color: #f0eef5 !important; }
 .border-slate-200 { border-color: var(--ahviq-line) !important; }
 .border-slate-300 { border-color: #dcd9e7 !important; }
-.hover\\:bg-slate-50:hover { background-color: #f4f3f9 !important; }
-.hover\\:bg-slate-100:hover { background-color: #eceaf2 !important; }
-.hover\\:bg-slate-800:hover { background-color: #27243b !important; }
-.hover\\:border-slate-200:hover { border-color: #ddd9e9 !important; }
-.hover\\:border-slate-300:hover { border-color: #cac6d8 !important; }
-.focus\\:border-slate-900:focus { border-color: #8078ff !important; }
-.focus\\:ring-slate-900:focus { --tw-ring-color: #8078ff !important; }
+.hover\:bg-slate-50:hover { background-color: #f4f3f9 !important; }
+.hover\:bg-slate-100:hover { background-color: #eceaf2 !important; }
+.hover\:bg-slate-800:hover { background-color: #27243b !important; }
+.hover\:border-slate-200:hover { border-color: #ddd9e9 !important; }
+.hover\:border-slate-300:hover { border-color: #cac6d8 !important; }
+.focus\:border-slate-900:focus { border-color: #8078ff !important; }
+.focus\:ring-slate-900:focus { --tw-ring-color: #8078ff !important; }
 
 main > section, main > div > section, main > div > div { border-color: var(--ahviq-line); }
 main > section,
@@ -182,3 +182,12 @@ button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; lin
 #root h1::after { content: 'AHVIQ'; font-size: 1.875rem; font-weight: 800; }
 #root h1 + p { font-size: 0 !important; }
 #root h1 + p::after { content: 'Your money. Your view.'; font-size: .875rem; }
+
+/* Final AHVIQ header: use the selected infinity + rupee + growth icon only. */
+header [aria-label="The Mint View logo"] {
+  background: #ffffff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important;
+  border-radius: 11px !important;
+}
+header [aria-label="The Mint View logo"] svg { display: none !important; }
+header b { font-size: 0 !important; }
+header b::before, header b::after { content: none !important; display: none !important; }
