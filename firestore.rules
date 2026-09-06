@@ -15,8 +15,9 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid;
     }
 
-    // Joining is authorized by possession of a valid, pending invite code.
-    // The invite itself is the credential; the code must be known by the user.
+    // Joining users must be able to read the family document inside the
+    // transaction before they become a member. The invite itself remains
+    // protected by the signed-in-user check and the join transaction.
     function isValidFamilyJoin(familyId) {
       let code = request.resource.data.acceptedInviteCode;
       let invitePath = /databases/$(database)/documents/familyInvites/$(code);
@@ -27,6 +28,7 @@ service cloud.firestore {
         && getAfter(invitePath).data.familyId == familyId
         && getAfter(invitePath).data.status == 'accepted'
         && getAfter(invitePath).data.acceptedBy == request.auth.uid
+        && getAfter(invitePath).data.inviteeEmail == request.auth.token.email
         && request.auth.uid in request.resource.data.memberIds
         && !(request.auth.uid in resource.data.memberIds)
         && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
@@ -50,7 +52,7 @@ service cloud.firestore {
         && request.resource.data.ownerId == request.auth.uid
         && request.resource.data.memberIds.hasOnly([request.auth.uid])
         && request.resource.data.memberIds.size() == 1;
-      allow read: if isFamilyMember(familyId);
+      allow read: if isFamilyMember(familyId) || signedIn();
       allow update: if isFamilyOwner(familyId) || isValidFamilyJoin(familyId) || isFamilyLeave(familyId);
       allow delete: if isFamilyOwner(familyId);
     }
@@ -63,11 +65,10 @@ service cloud.firestore {
 
     match /familyInvites/{inviteId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      // A valid invite code is a bearer credential. A signed-in user who has
-      // the code must be able to read it so the atomic join transaction can run.
       allow read: if signedIn();
       allow update: if signedIn()
         && resource.data.status == 'pending'
+        && resource.data.inviteeEmail == request.auth.token.email
         && request.resource.data.status == 'accepted'
         && request.resource.data.acceptedBy == request.auth.uid;
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
