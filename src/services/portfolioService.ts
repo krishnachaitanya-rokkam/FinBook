@@ -1,4 +1,4 @@
-import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 export interface PortfolioField {
@@ -8,8 +8,27 @@ export interface PortfolioField {
   color: string;
 }
 
+export interface NetWorthItem {
+  id: string;
+  label: string;
+  amount: number;
+  kind: 'asset' | 'liability';
+  type: string;
+}
+
+export interface FinancialGoal {
+  id: string;
+  name: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  monthlyContribution: number;
+}
+
 export interface PortfolioConfig {
   fields: PortfolioField[];
+  netWorthItems?: NetWorthItem[];
+  goals?: FinancialGoal[];
 }
 
 export const DEFAULT_PORTFOLIO_FIELDS: PortfolioField[] = [
@@ -34,12 +53,31 @@ export function subscribeToPortfolio(
     (snapshot) => {
       const data = snapshot.data() as Partial<PortfolioConfig> | undefined;
       const fields = Array.isArray(data?.fields) ? data!.fields : DEFAULT_PORTFOLIO_FIELDS;
-      onChange({ fields: fields.map((field) => ({
-        id: String(field.id),
-        label: String(field.label),
-        amount: Number(field.amount) || 0,
-        color: String(field.color || '#4f46e5'),
-      })) });
+      const netWorthItems = Array.isArray(data?.netWorthItems) ? data!.netWorthItems : [];
+      const goals = Array.isArray(data?.goals) ? data!.goals : [];
+      onChange({
+        fields: fields.map((field) => ({
+          id: String(field.id),
+          label: String(field.label),
+          amount: Number(field.amount) || 0,
+          color: String(field.color || '#4f46e5'),
+        })),
+        netWorthItems: netWorthItems.map((item) => ({
+          id: String(item.id),
+          label: String(item.label),
+          amount: Number(item.amount) || 0,
+          kind: item.kind === 'liability' ? 'liability' : 'asset',
+          type: String(item.type || 'Other'),
+        })),
+        goals: goals.map((goal) => ({
+          id: String(goal.id),
+          name: String(goal.name),
+          targetAmount: Number(goal.targetAmount) || 0,
+          currentAmount: Number(goal.currentAmount) || 0,
+          targetDate: String(goal.targetDate || ''),
+          monthlyContribution: Number(goal.monthlyContribution) || 0,
+        })),
+      });
     },
     (error) => onError?.(error),
   );
@@ -52,5 +90,20 @@ export async function savePortfolio(uid: string, config: PortfolioConfig): Promi
     amount: Number(field.amount) || 0,
     color: field.color,
   }));
-  await setDoc(portfolioDoc(uid), { fields });
+  const netWorthItems = (config.netWorthItems || []).map((item) => ({
+    id: item.id,
+    label: item.label.trim(),
+    amount: Number(item.amount) || 0,
+    kind: item.kind,
+    type: item.type,
+  }));
+  const goals = (config.goals || []).map((goal) => ({
+    id: goal.id,
+    name: goal.name.trim(),
+    targetAmount: Number(goal.targetAmount) || 0,
+    currentAmount: Number(goal.currentAmount) || 0,
+    targetDate: goal.targetDate,
+    monthlyContribution: Number(goal.monthlyContribution) || 0,
+  }));
+  await setDoc(portfolioDoc(uid), { fields, netWorthItems, goals });
 }
