@@ -5,111 +5,180 @@
   --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+:root {
+  --ahviq-ink: #17152a;
+  --ahviq-muted: #73708a;
+  --ahviq-line: #eceaf4;
+  --ahviq-surface: #ffffff;
+  --ahviq-bg: #f7f7fb;
+  --ahviq-purple: #635bff;
+  --ahviq-purple-soft: #f0efff;
+  --ahviq-green: #20b486;
+}
+
 html, body, #root { min-height: 100%; }
 html { overflow-x: hidden; }
-body { margin: 0; font-family: var(--font-sans); color: #172033; background: #f5f7fb; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: hidden; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--ahviq-ink);
+  background: var(--ahviq-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
 button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-.bg-slate-50 { background-color: #f5f7fb !important; }
-.bg-slate-100 { background-color: #eef1f6 !important; }
-.bg-slate-200 { background-color: #e3e7ef !important; }
-.bg-slate-900 { background-color: #5146e5 !important; }
-.bg-white { background-color: #ffffff !important; }
-.text-slate-900 { color: #172033 !important; }
-.text-slate-800 { color: #253047 !important; }
-.text-slate-700 { color: #46536b !important; }
-.text-slate-600 { color: #66738a !important; }
-.text-slate-500 { color: #7d889d !important; }
-.text-slate-400 { color: #9aa4b6 !important; }
-.text-slate-300 { color: #c0c7d3 !important; }
-.border-slate-100 { border-color: #eef1f5 !important; }
-.border-slate-200 { border-color: #e4e8ef !important; }
-.border-slate-300 { border-color: #d5dae4 !important; }
-.hover\:bg-slate-50:hover { background-color: #f1f3f8 !important; }
-.hover\:bg-slate-100:hover { background-color: #e9edf4 !important; }
-.hover\:bg-slate-800:hover { background-color: #4338ca !important; }
-.hover\:border-slate-200:hover { border-color: #d9dee8 !important; }
-.hover\:border-slate-300:hover { border-color: #c9cfdb !important; }
-.focus\:border-slate-900:focus { border-color: #6d63f2 !important; }
-.focus\:ring-slate-900:focus { --tw-ring-color: #6d63f2 !important; }
-main > section, main > div > section, main > div > div { border-color: #e7eaf1; }
-main > section, #metric-summary-grid > div, #expense-charts-card, [id$="-modal-dialog"] { box-shadow: 0 1px 2px rgba(15,23,42,.03), 0 8px 24px rgba(15,23,42,.045); }
-header { box-shadow: 0 1px 8px rgba(15,23,42,.035); }
+
+.bg-slate-50 { background-color: var(--ahviq-bg) !important; }
+.bg-slate-100 { background-color: #f0eff5 !important; }
+.bg-slate-200 { background-color: #e5e3ed !important; }
+.bg-slate-900 { background-color: var(--ahviq-ink) !important; }
+.bg-white { background-color: var(--ahviq-surface) !important; }
+.text-slate-900 { color: var(--ahviq-ink) !important; }
+.text-slate-800 { color: #2c2942 !important; }
+.text-slate-700 { color: #514e66 !important; }
+.text-slate-600 { color: #68657d !important; }
+.text-slate-500 { color: var(--ahviq-muted) !important; }
+.text-slate-400 { color: #9996aa !important; }
+.text-slate-300 { color: #c5c2d1 !important; }
+.border-slate-100 { border-color: #f0eef5 !important; }
+.border-slate-200 { border-color: var(--ahviq-line) !important; }
+.border-slate-300 { border-color: #dcd9e7 !important; }
+.hover\\:bg-slate-50:hover { background-color: #f4f3f9 !important; }
+.hover\\:bg-slate-100:hover { background-color: #eceaf2 !important; }
+.hover\\:bg-slate-800:hover { background-color: #27243b !important; }
+.hover\\:border-slate-200:hover { border-color: #ddd9e9 !important; }
+.hover\\:border-slate-300:hover { border-color: #cac6d8 !important; }
+.focus\\:border-slate-900:focus { border-color: #8078ff !important; }
+.focus\\:ring-slate-900:focus { --tw-ring-color: #8078ff !important; }
+
+main > section, main > div > section, main > div > div { border-color: var(--ahviq-line); }
+main > section,
+#metric-summary-grid > div,
+#expense-charts-card,
+[id$="-modal-dialog"] {
+  box-shadow: 0 1px 2px rgba(23,21,42,.025), 0 10px 30px rgba(23,21,42,.045);
+}
+header {
+  box-shadow: 0 1px 0 rgba(23,21,42,.05), 0 8px 28px rgba(23,21,42,.035);
+  background: rgba(255,255,255,.96) !important;
+  backdrop-filter: blur(14px);
+}
 button { transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
-button.bg-slate-900, button[class*="bg-indigo-"], button[class*="bg-violet-"] { box-shadow: 0 5px 14px rgba(81,70,229,.20); }
-button.bg-slate-900:hover, button[class*="bg-indigo-"]:hover, button[class*="bg-violet-"]:hover { box-shadow: 0 7px 18px rgba(81,70,229,.26); transform: translateY(-1px); }
-input, select, textarea { border-color: #dfe4ed !important; background-color: #fff !important; color: #172033 !important; }
-input::placeholder, textarea::placeholder { color: #9aa4b6; }
-input:focus, select:focus, textarea:focus { border-color: #6d63f2 !important; box-shadow: 0 0 0 3px rgba(109,99,242,.10) !important; outline: none; }
-::-webkit-scrollbar { width: 6px; height: 6px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #cbd1dc; border-radius: 9999px; } ::-webkit-scrollbar-thumb:hover { background: #aeb6c5; }
-main > section { padding: 16px !important; }
-@media (max-width:640px) {
-  header > div { width:100%; box-sizing:border-box; padding:8px 10px !important; flex-direction:column; align-items:stretch !important; gap:7px !important; }
-  header > div > div:first-child { justify-content:flex-start; min-width:0; width:100%; }
-  header > div > div:last-child { width:100%; min-width:0; justify-content:space-between; flex-wrap:nowrap; gap:4px !important; }
-  header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink:0; }
-  main { width:100%; box-sizing:border-box; padding:10px 10px 18px !important; gap:10px !important; }
-
-  /* Mobile cash-flow navigation is a compact horizontal slider. One tap activates a tab;
-     swiping reveals the remaining options without consuming the whole screen height. */
-  main > div:first-child {
-    display:flex !important;
-    flex-wrap:nowrap !important;
-    gap:6px !important;
-    width:100%;
-    overflow-x:auto !important;
-    overflow-y:hidden;
-    justify-content:flex-start !important;
-    scrollbar-width:none;
-    -ms-overflow-style:none;
-    scroll-snap-type:x proximity;
-    overscroll-behavior-x:contain;
-    touch-action:pan-x;
-  }
-  main > div:first-child::-webkit-scrollbar { display:none; }
-  main > div:first-child button {
-    flex:0 0 auto !important;
-    width:auto !important;
-    min-width:132px !important;
-    white-space:nowrap;
-    scroll-snap-align:start;
-  }
-  main > section { padding:12px !important; border-radius:16px; }
-  main section > div:first-child { flex-wrap:wrap; align-items:flex-start; gap:9px; }
-  main section > div:first-child > div:last-child { width:100%; justify-content:flex-start; flex-wrap:wrap; }
-  #metric-summary-grid { gap:8px !important; } #metric-summary-grid > div { padding:12px !important; border-radius:14px; }
-  #expense-charts-card { width:100%; max-width:100%; } #expense-charts-card > div:first-child { padding:12px !important; } #expense-charts-card > div:last-child { padding:10px !important; }
-  input, select, textarea { font-size:16px !important; } [id$="-modal-dialog"] { max-width:calc(100vw - 20px) !important; max-height:calc(100vh - 20px); overflow-y:auto; }
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size:clamp(14px,4.2vw,18px) !important; font-weight:700 !important; }
-  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size:10px !important; }
+button.bg-slate-900, button[class*="bg-indigo-"], button[class*="bg-violet-"] {
+  box-shadow: 0 6px 18px rgba(99,91,255,.18);
 }
-@media (min-width:641px) { main { gap:16px; } }
-@media (max-width:380px) {
-  header > div > div:first-child p { display:none; }
-  main { padding-left:8px !important; padding-right:8px !important; }
-  main > div:first-child { gap:5px !important; }
-  main > div:first-child button { min-width:124px !important; padding-left:8px !important; padding-right:8px !important; }
-  #metric-summary-grid > div { padding:10px !important; }
-  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size:14px !important; }
+button.bg-slate-900:hover, button[class*="bg-indigo-"]:hover, button[class*="bg-violet-"]:hover {
+  box-shadow: 0 9px 22px rgba(99,91,255,.24);
+  transform: translateY(-1px);
 }
-button[class*="fixed"][class*="bottom-"] { display:none !important; }
-button:has(svg.lucide-receipt) > svg.lucide-receipt { display:none !important; }
-button:has(svg.lucide-receipt)::before { content:'▤'; font-size:1.25rem; line-height:1; font-weight:500; }
+input, select, textarea {
+  border-color: #dfdce8 !important;
+  background-color: #fff !important;
+  color: var(--ahviq-ink) !important;
+  border-radius: 12px !important;
+}
+input::placeholder, textarea::placeholder { color: #a09caf; }
+input:focus, select:focus, textarea:focus {
+  border-color: #8078ff !important;
+  box-shadow: 0 0 0 3px rgba(99,91,255,.10) !important;
+  outline: none;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d2cfdd; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #b8b4c6; }
 
-/* The Mint View branding. */
-aside > div:first-child .h-10.w-10 { background:#f0fdf4 url('/the-mint-view-icon.svg') center / 100% 100% no-repeat !important; color:transparent !important; border-radius:12px !important; }
-aside > div:first-child .h-10.w-10 svg { display:none !important; }
-aside > div:first-child b { font-size:0 !important; }
-aside > div:first-child b::after { content:'The Mint View'; font-size:1.125rem; }
-aside > div:first-child p { font-size:0 !important; }
-aside > div:first-child p::after { content:'A clearer view of your money.'; font-size:.75rem; }
+/* AHVIQ visual system: airy surfaces, compact cards, stronger hierarchy. */
+main { background: transparent; }
+main > section { padding: 18px !important; border-radius: 20px !important; background: #fff; }
+main > div:first-child button {
+  border-radius: 999px !important;
+  font-weight: 700 !important;
+}
+main > div:first-child button.bg-slate-900,
+main > div:first-child button[class*="bg-indigo-"] {
+  background: var(--ahviq-ink) !important;
+  color: #fff !important;
+}
+#metric-summary-grid > div {
+  border-radius: 18px !important;
+  background: #fff;
+}
+#expense-charts-card { border-radius: 20px !important; overflow: hidden; background: #fff; }
 
-/* Mobile header: directly replace the existing FinBook text with the graph logo and name. */
+/* Brand. */
+aside > div:first-child .h-10.w-10,
+aside > div:first-child .h-9.w-9 {
+  background: #f3f1ff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important;
+  color: transparent !important;
+  border-radius: 13px !important;
+}
+aside > div:first-child .h-10.w-10 svg,
+aside > div:first-child .h-9.w-9 svg { display: none !important; }
+aside > div:first-child b { font-size: 0 !important; letter-spacing: -.02em; }
+aside > div:first-child b::after { content: 'AHVIQ'; font-size: 1.18rem; font-weight: 800; letter-spacing: -.035em; }
+aside > div:first-child p { font-size: 0 !important; }
+aside > div:first-child p::after { content: 'Your money. Your view.'; font-size: .72rem; }
+
 @media (max-width:767px) {
-  header b { font-size:0 !important; display:flex !important; align-items:center; gap:8px; }
-  header b::before { content:''; width:34px; height:34px; flex:0 0 34px; background:url('/the-mint-view-icon.svg') center / 100% 100% no-repeat; border-radius:9px; }
-  header b::after { content:'The Mint View'; font-size:1.125rem; line-height:1.2; color:#172033; }
+  header > div {
+    width: 100%; box-sizing: border-box; padding: 9px 11px !important;
+    flex-direction: column; align-items: stretch !important; gap: 7px !important;
+  }
+  header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
+  header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
+  header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
+  header b { font-size: 0 !important; display: flex !important; align-items: center; gap: 8px; letter-spacing: -.03em; }
+  header b::before {
+    content: ''; width: 34px; height: 34px; flex: 0 0 34px;
+    background: url('/ahviq-icon.svg') center / 100% 100% no-repeat; border-radius: 10px;
+  }
+  header b::after { content: 'AHVIQ'; font-size: 1.18rem; line-height: 1.2; color: var(--ahviq-ink); font-weight: 800; }
+  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; }
+  main > div:first-child {
+    display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; width: 100%;
+    overflow-x: auto !important; overflow-y: hidden; justify-content: flex-start !important;
+    scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain; touch-action: pan-x; padding: 1px 1px 4px;
+  }
+  main > div:first-child::-webkit-scrollbar { display: none; }
+  main > div:first-child button {
+    flex: 0 0 auto !important; width: auto !important; min-width: 112px !important;
+    white-space: nowrap; scroll-snap-align: start; padding-top: 9px !important; padding-bottom: 9px !important;
+    box-shadow: 0 2px 8px rgba(23,21,42,.04);
+  }
+  main > section { padding: 13px !important; border-radius: 17px !important; }
+  main section > div:first-child { flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+  main section > div:first-child > div:last-child { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  #metric-summary-grid { gap: 8px !important; }
+  #metric-summary-grid > div { padding: 12px !important; border-radius: 15px !important; }
+  #expense-charts-card { width: 100%; max-width: 100%; }
+  #expense-charts-card > div:first-child { padding: 12px !important; }
+  #expense-charts-card > div:last-child { padding: 10px !important; }
+  input, select, textarea { font-size: 16px !important; }
+  [id$="-modal-dialog"] { max-width: calc(100vw - 20px) !important; max-height: calc(100vh - 20px); overflow-y: auto; border-radius: 20px !important; }
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: clamp(14px,4.2vw,18px) !important; font-weight: 700 !important; }
+  #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
 }
-#root h1 { font-size:0 !important; }
-#root h1::after { content:'The Mint View'; font-size:1.875rem; }
-#root h1 + p { font-size:0 !important; }
-#root h1 + p::after { content:'A clearer view of your money.'; font-size:.875rem; }
+
+@media (min-width:768px) {
+  main { gap: 16px; }
+  aside { border-right-color: #eceaf4 !important; }
+}
+@media (max-width:380px) {
+  header > div > div:first-child p { display: none; }
+  main { padding-left: 8px !important; padding-right: 8px !important; }
+  main > div:first-child { gap: 5px !important; }
+  main > div:first-child button { min-width: 104px !important; padding-left: 10px !important; padding-right: 10px !important; }
+  #metric-summary-grid > div { padding: 10px !important; }
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: 14px !important; }
+}
+
+button[class*="fixed"][class*="bottom-"] { display: none !important; }
+button:has(svg.lucide-receipt) > svg.lucide-receipt { display: none !important; }
+button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; line-height: 1; font-weight: 500; }
+#root h1 { font-size: 0 !important; letter-spacing: -.04em; }
+#root h1::after { content: 'AHVIQ'; font-size: 1.875rem; font-weight: 800; }
+#root h1 + p { font-size: 0 !important; }
+#root h1 + p::after { content: 'Your money. Your view.'; font-size: .875rem; }
