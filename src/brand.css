@@ -1,16 +1,70 @@
-/* The Mint View brand layer. Keeps the existing navigation and layout intact. */
-aside > div:first-child .h-10.w-10 {
-  background: #f0fdf4 url('/the-mint-view-icon.svg') center / 100% 100% no-repeat !important;
-  color: transparent !important;
+/* AHVIQ brand layer — visual theme only. Existing navigation and functionality stay unchanged. */
+
+:root {
+  --ahviq-blue: #2563eb;
+  --ahviq-blue-strong: #1d4ed8;
+  --ahviq-blue-soft: #eff6ff;
+  --ahviq-ink: #101a3a;
+  --ahviq-muted: #6b7590;
+  --ahviq-line: #e8edf5;
 }
-aside > div:first-child .h-10.w-10 svg { display: none !important; }
-aside > div:first-child b { font-size: 0 !important; }
-aside > div:first-child b::after { content: 'The Mint View'; font-size: 1.125rem; }
-aside > div:first-child p { font-size: 0 !important; }
-aside > div:first-child p::after { content: 'A clearer view of your money.'; font-size: .75rem; }
-header .md\\:hidden.min-w-0 b { font-size: 0 !important; }
-header .md\\:hidden.min-w-0 b::after { content: 'The Mint View'; font-size: 1.125rem; }
-#root h1 { font-size: 0 !important; }
-#root h1::after { content: 'The Mint View'; font-size: 1.875rem; }
-#root h1 + p { font-size: 0 !important; }
-#root h1 + p::after { content: 'A clearer view of your money.'; font-size: .875rem; }
+
+/* Sidebar brand */
+aside > div:first-child .h-10.w-10,
+aside > div:first-child .h-9.w-9 {
+  background: #eef4ff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important;
+  color: transparent !important;
+  border-radius: 14px !important;
+  box-shadow: 0 6px 16px rgba(37,99,235,.10);
+}
+aside > div:first-child .h-10.w-10 svg,
+aside > div:first-child .h-9.w-9 svg { display: none !important; }
+aside > div:first-child b {
+  font-size: 0 !important;
+  color: var(--ahviq-ink) !important;
+  letter-spacing: -.035em;
+}
+aside > div:first-child b::after {
+  content: 'AHVIQ';
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+aside > div:first-child p {
+  font-size: 0 !important;
+}
+aside > div:first-child p::after {
+  content: 'Your money. Your view.';
+  font-size: .72rem;
+  color: var(--ahviq-muted);
+}
+
+/* Main visual hierarchy */
+#root h1 {
+  font-size: 0 !important;
+  letter-spacing: -.045em;
+  color: var(--ahviq-ink) !important;
+}
+#root h1::after {
+  content: 'AHVIQ';
+  font-size: 1.875rem;
+  line-height: 1.15;
+  font-weight: 800;
+}
+#root h1 + p {
+  font-size: 0 !important;
+}
+#root h1 + p::after {
+  content: 'Your money. Your view.';
+  font-size: .875rem;
+  color: var(--ahviq-muted);
+}
+
+/* Never put the AHVIQ wordmark in the mobile/header brand area. */
+header .md\\:hidden.min-w-0 b,
+header .md\\:hidden.min-w-0 b::before,
+header .md\\:hidden.min-w-0 b::after {
+  font-size: 0 !important;
+  content: none !important;
+  display: none !important;
+}
