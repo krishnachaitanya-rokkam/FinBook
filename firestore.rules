@@ -28,7 +28,7 @@ service cloud.firestore {
     match /families/{familyId}/summaries/{memberId} {
       allow read: if isFamilyMember(familyId);
       allow create, update: if isFamilyMember(familyId) && request.auth.uid == memberId;
-      allow delete: if isFamilyMember(familyId) && request.auth.uid == memberId;
+      allow delete: if isFamilyOwner(familyId) || (isFamilyMember(familyId) && request.auth.uid == memberId);
     }
     match /familyInvites/{inviteId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
