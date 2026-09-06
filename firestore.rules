@@ -15,15 +15,15 @@ service cloud.firestore {
         && code is string
         && code != ''
         && exists(invitePath)
-        && getAfter(invitePath).data.familyId == familyId
-        && getAfter(invitePath).data.status == 'accepted'
-        && getAfter(invitePath).data.acceptedBy == request.auth.uid
+        && get(invitePath).data.familyId == familyId
+        && get(invitePath).data.status == 'pending'
+        && get(invitePath).data.inviteeEmail == request.auth.token.email
         && request.auth.uid in request.resource.data.memberIds
         && !(request.auth.uid in resource.data.memberIds)
         && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'acceptedInviteCode']);
     }
-    function isValidFamilyLeave(familyId) {
+    function isFamilyLeave(familyId) {
       return isFamilyMember(familyId)
         && request.auth.uid in resource.data.memberIds
         && !(request.auth.uid in request.resource.data.memberIds)
@@ -36,7 +36,7 @@ service cloud.firestore {
     match /families/{familyId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.memberIds.hasOnly([request.auth.uid]) && request.resource.data.memberIds.size() == 1;
       allow read: if isFamilyMember(familyId);
-      allow update: if isFamilyOwner(familyId) || isValidFamilyJoin(familyId) || isValidFamilyLeave(familyId);
+      allow update: if isFamilyOwner(familyId) || isValidFamilyJoin(familyId) || isFamilyLeave(familyId);
       allow delete: if isFamilyOwner(familyId);
     }
     match /families/{familyId}/summaries/{memberId} {
@@ -47,7 +47,7 @@ service cloud.firestore {
     match /familyInvites/{inviteId} {
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
       allow read: if signedIn() && (resource.data.ownerId == request.auth.uid || resource.data.inviteeEmail == request.auth.token.email);
-      allow update: if signedIn() && resource.data.status == 'pending' && request.resource.data.status == 'accepted' && request.resource.data.acceptedBy == request.auth.uid;
+      allow update: if signedIn() && resource.data.status == 'pending' && resource.data.inviteeEmail == request.auth.token.email && request.resource.data.status == 'accepted' && request.resource.data.acceptedBy == request.auth.uid;
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
