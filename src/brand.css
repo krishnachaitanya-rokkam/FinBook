@@ -30,9 +30,7 @@ aside > div:first-child b::after {
   font-weight: 800;
   letter-spacing: -.035em;
 }
-aside > div:first-child p {
-  font-size: 0 !important;
-}
+aside > div:first-child p { font-size: 0 !important; }
 aside > div:first-child p::after {
   content: 'Your money. Your view.';
   font-size: .72rem;
@@ -51,9 +49,7 @@ aside > div:first-child p::after {
   line-height: 1.15;
   font-weight: 800;
 }
-#root h1 + p {
-  font-size: 0 !important;
-}
+#root h1 + p { font-size: 0 !important; }
 #root h1 + p::after {
   content: 'Your money. Your view.';
   font-size: .875rem;
@@ -67,4 +63,99 @@ header .md\\:hidden.min-w-0 b::after {
   font-size: 0 !important;
   content: none !important;
   display: none !important;
+}
+
+/* Mockup-inspired fintech theme */
+body { background: #f7f9fd !important; color: var(--ahviq-ink) !important; }
+header {
+  background: rgba(255,255,255,.94) !important;
+  border-bottom: 1px solid #edf1f7 !important;
+  box-shadow: 0 1px 0 rgba(16,26,58,.03), 0 8px 28px rgba(37,63,110,.035) !important;
+  backdrop-filter: blur(16px);
+}
+aside {
+  background: #fff !important;
+  border-right-color: #e8edf5 !important;
+  box-shadow: 8px 0 30px rgba(37,63,110,.035) !important;
+}
+main { background: transparent !important; }
+main > section {
+  background: #fff !important;
+  border-color: #e8edf5 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 1px 2px rgba(16,26,58,.025), 0 12px 30px rgba(37,63,110,.045) !important;
+}
+
+/* Sidebar navigation */
+aside nav button {
+  border-radius: 11px !important;
+  min-height: 42px;
+  transition: all .18s ease !important;
+}
+aside nav button[class*="bg-indigo-50"] {
+  background: #eaf2ff !important;
+  color: var(--ahviq-blue-strong) !important;
+  box-shadow: inset 3px 0 0 var(--ahviq-blue), 0 3px 10px rgba(37,99,235,.06) !important;
+}
+aside nav button[class*="bg-slate-900"] {
+  background: var(--ahviq-blue) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37,99,235,.16) !important;
+}
+aside nav button:not([class*="bg-indigo-50"]):not([class*="bg-slate-900"]):hover {
+  background: #f5f8fd !important;
+  color: var(--ahviq-ink) !important;
+}
+
+/* Month/view controls */
+main > div:first-child button { border-radius: 999px !important; }
+main > div:first-child button[class*="bg-indigo-"],
+main > div:first-child button.bg-slate-900 {
+  background: var(--ahviq-blue) !important;
+  color: #fff !important;
+  box-shadow: 0 5px 14px rgba(37,99,235,.15) !important;
+}
+
+/* Metric cards — soft category tints */
+#metric-summary-grid > div {
+  border-radius: 17px !important;
+  border: 1px solid #e8edf5 !important;
+  box-shadow: 0 1px 2px rgba(16,26,58,.02), 0 8px 22px rgba(37,63,110,.04) !important;
+}
+#metric-summary-grid > div:nth-child(1) { background: linear-gradient(135deg,#effcf8 0%,#fff 72%) !important; }
+#metric-summary-grid > div:nth-child(2) { background: linear-gradient(135deg,#fff3f4 0%,#fff 72%) !important; }
+#metric-summary-grid > div:nth-child(3) { background: linear-gradient(135deg,#eff6ff 0%,#fff 72%) !important; }
+#metric-summary-grid > div:nth-child(4) { background: linear-gradient(135deg,#f5f1ff 0%,#fff 72%) !important; }
+#metric-summary-grid > div:nth-child(5) { background: linear-gradient(135deg,#eefbf7 0%,#fff 72%) !important; }
+
+/* Buttons, inputs and dialogs */
+button.bg-slate-900,
+button[class*="bg-indigo-"],
+button[class*="bg-violet-"] {
+  background: var(--ahviq-blue) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37,99,235,.15) !important;
+}
+button.bg-slate-900:hover,
+button[class*="bg-indigo-"]:hover,
+button[class*="bg-violet-"]:hover {
+  background: var(--ahviq-blue-strong) !important;
+  box-shadow: 0 8px 20px rgba(37,99,235,.20) !important;
+}
+input, select, textarea {
+  border-color: #dfe6f0 !important;
+  border-radius: 11px !important;
+  background: #fff !important;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #7aa7f8 !important;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+}
+
+/* Keep the mobile experience spacious and vertically scrollable. */
+@media (max-width:767px) {
+  main { padding: 10px 10px 22px !important; }
+  main > section { border-radius: 16px !important; }
+  #metric-summary-grid > div { border-radius: 14px !important; }
+  aside { box-shadow: 12px 0 32px rgba(37,63,110,.08) !important; }
 }
