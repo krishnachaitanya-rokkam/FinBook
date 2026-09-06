@@ -129,12 +129,12 @@ aside > div:first-child p::after { content: 'Your money. Your view.'; font-size:
   header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
   header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
   header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
-  header b { font-size: 0 !important; display: flex !important; align-items: center; gap: 8px; letter-spacing: -.03em; }
+  header b { font-size: 0 !important; display: flex !important; align-items: center; gap: 0; letter-spacing: -.03em; }
   header b::before {
-    content: ''; width: 34px; height: 34px; flex: 0 0 34px;
-    background: url('/ahviq-icon.svg') center / 100% 100% no-repeat; border-radius: 10px;
+    content: ''; width: 38px; height: 38px; flex: 0 0 38px;
+    background: url('/ahviq-icon.svg') center / 100% 100% no-repeat; border-radius: 11px;
   }
-  header b::after { content: 'AHVIQ'; font-size: 1.18rem; line-height: 1.2; color: var(--ahviq-ink); font-weight: 800; }
+  header b::after { content: none !important; display: none !important; }
   main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; }
   main > div:first-child {
     display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; width: 100%;
