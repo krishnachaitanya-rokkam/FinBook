@@ -4,130 +4,30 @@ import { firestore } from './firebase';
 
 export interface InvestmentMapping { id: InvestmentType; label: string; color: string; }
 export const INVESTMENT_MAPPINGS: InvestmentMapping[] = [
-  { id: 'ppf', label: 'PPF', color: '#4f46e5' },
-  { id: 'mutual_funds', label: 'Mutual Funds', color: '#0891b2' },
-  { id: 'stocks', label: 'Stocks', color: '#0d9488' },
-  { id: 'epf', label: 'EPF', color: '#16a34a' },
-  { id: 'nps', label: 'NPS', color: '#d97706' },
-  { id: 'fixed_deposits', label: 'Fixed Deposits', color: '#db2777' },
-  { id: 'gold', label: 'Gold', color: '#7c3aed' },
-  { id: 'other_investment', label: 'Other Investment', color: '#64748b' },
+  { id: 'ppf', label: 'PPF', color: '#4f46e5' }, { id: 'mutual_funds', label: 'Mutual Funds', color: '#0891b2' }, { id: 'stocks', label: 'Stocks', color: '#0d9488' }, { id: 'epf', label: 'EPF', color: '#16a34a' }, { id: 'nps', label: 'NPS', color: '#d97706' }, { id: 'fixed_deposits', label: 'Fixed Deposits', color: '#db2777' }, { id: 'gold', label: 'Gold', color: '#7c3aed' }, { id: 'other_investment', label: 'Other Investment', color: '#64748b' },
 ];
-
 const userRoot = (uid: string) => doc(firestore, 'users', uid);
 const portfolioRef = (uid: string) => doc(userRoot(uid), 'portfolio', 'config');
 const cacheKey = (uid: string) => `finbook-data-${uid}-v2`;
-
 type UserData = { expenses: Expense[]; incomes: Income[]; budgets: Record<string, MonthBudgetConfig> };
 type RecurringItem = { id: string; title: string; type: 'income' | 'expense' | 'bill'; amount: number; day: number; month?: number; frequency: 'monthly' | 'yearly'; autoRecord: boolean; active: boolean };
-
 export type CloudStorageUsage = { expenses: number; incomes: number; budgets: number; recurring: number; portfolio: number; totalBytes: number };
-
-function stripUndefined<T>(value: T): T {
-  if (Array.isArray(value)) return value.map((item) => stripUndefined(item)) as T;
-  if (value && typeof value === 'object') { const result: Record<string, unknown> = {}; Object.entries(value as Record<string, unknown>).forEach(([key, item]) => { if (item !== undefined) result[key] = stripUndefined(item); }); return result as T; }
-  return value;
-}
+function stripUndefined<T>(value: T): T { if (Array.isArray(value)) return value.map((item) => stripUndefined(item)) as T; if (value && typeof value === 'object') { const result: Record<string, unknown> = {}; Object.entries(value as Record<string, unknown>).forEach(([key, item]) => { if (item !== undefined) result[key] = stripUndefined(item); }); return result as T; } return value; }
 const normalizeExpense = (expense: Expense) => stripUndefined(expense);
 const normalizeIncome = (income: Income) => stripUndefined(income);
 function estimateBytes(value: unknown): number { try { return new TextEncoder().encode(JSON.stringify(stripUndefined(value))).byteLength; } catch { return 0; } }
-
-export async function getApproximateStorageUsage(uid: string): Promise<CloudStorageUsage> {
-  const [expensesSnap, incomesSnap, budgetsSnap, recurringSnap, portfolioSnap] = await Promise.all([getDocs(collection(userRoot(uid), 'expenses')), getDocs(collection(userRoot(uid), 'incomes')), getDocs(collection(userRoot(uid), 'budgets')), getDocs(collection(userRoot(uid), 'recurring')), getDoc(portfolioRef(uid))]);
-  const sumDocs = (snap: { docs: Array<{ data: () => unknown }> }) => snap.docs.reduce((total, item) => total + estimateBytes(item.data()), 0);
-  const expenses = sumDocs(expensesSnap); const incomes = sumDocs(incomesSnap); const budgets = sumDocs(budgetsSnap); const recurring = sumDocs(recurringSnap); const portfolio = portfolioSnap.exists() ? estimateBytes(portfolioSnap.data()) : 0;
-  return { expenses, incomes, budgets, recurring, portfolio, totalBytes: expenses + incomes + budgets + recurring + portfolio };
-}
-
+export async function getApproximateStorageUsage(uid: string): Promise<CloudStorageUsage> { const [expensesSnap, incomesSnap, budgetsSnap, recurringSnap, portfolioSnap] = await Promise.all([getDocs(collection(userRoot(uid), 'expenses')), getDocs(collection(userRoot(uid), 'incomes')), getDocs(collection(userRoot(uid), 'budgets')), getDocs(collection(userRoot(uid), 'recurring')), getDoc(portfolioRef(uid))]); const sumDocs = (snap: { docs: Array<{ data: () => unknown }> }) => snap.docs.reduce((total, item) => total + estimateBytes(item.data()), 0); const expenses = sumDocs(expensesSnap); const incomes = sumDocs(incomesSnap); const budgets = sumDocs(budgetsSnap); const recurring = sumDocs(recurringSnap); const portfolio = portfolioSnap.exists() ? estimateBytes(portfolioSnap.data()) : 0; return { expenses, incomes, budgets, recurring, portfolio, totalBytes: expenses + incomes + budgets + recurring + portfolio }; }
 function readCache(uid: string): UserData | null { try { const raw = localStorage.getItem(cacheKey(uid)); if (!raw) return null; const parsed = JSON.parse(raw); if (!Array.isArray(parsed?.expenses) || !Array.isArray(parsed?.incomes) || typeof parsed?.budgets !== 'object') return null; return { expenses: parsed.expenses, incomes: parsed.incomes, budgets: parsed.budgets }; } catch { return null; } }
 function writeCache(uid: string, data: UserData) { try { localStorage.setItem(cacheKey(uid), JSON.stringify(stripUndefined(data))); } catch {} }
-
-function getDueDate(item: RecurringItem, now = new Date()): string | null {
-  if (!item.active || !item.autoRecord || !Number.isFinite(item.amount) || item.amount <= 0) return null;
-  const year = now.getFullYear(); const month = now.getMonth() + 1;
-  if (item.frequency === 'monthly') { const day = Math.min(Math.max(1, item.day || 1), new Date(year, month, 0).getDate()); if (now.getDate() < day) return null; return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`; }
-  const targetMonth = Math.min(Math.max(1, item.month || 1), 12); const targetDay = Math.min(Math.max(1, item.day || 1), new Date(year, targetMonth, 0).getDate()); if (month < targetMonth || (month === targetMonth && now.getDate() < targetDay)) return null;
-  return `${year}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`;
-}
-
-function investmentFieldDelta(expense: Expense | undefined, direction: 1 | -1): { type: InvestmentType; delta: number } | null {
-  if (!expense || expense.categoryId !== 'investment') return null;
-  return { type: expense.investmentType || 'other_investment', delta: (Number(expense.amount) || 0) * direction };
-}
-
+function getDueDate(item: RecurringItem, now = new Date()): string | null { if (!item.active || !item.autoRecord || !Number.isFinite(item.amount) || item.amount <= 0) return null; const year = now.getFullYear(); const month = now.getMonth() + 1; if (item.frequency === 'monthly') { const day = Math.min(Math.max(1, item.day || 1), new Date(year, month, 0).getDate()); if (now.getDate() < day) return null; return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`; } const targetMonth = Math.min(Math.max(1, item.month || 1), 12); const targetDay = Math.min(Math.max(1, item.day || 1), new Date(year, targetMonth, 0).getDate()); if (month < targetMonth || (month === targetMonth && now.getDate() < targetDay)) return null; return `${year}-${String(targetMonth).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`; }
+function investmentFieldDelta(expense: Expense | undefined, direction: 1 | -1): { type: InvestmentType; delta: number } | null { if (!expense || expense.categoryId !== 'investment') return null; return { type: expense.investmentType || 'other_investment', delta: (Number(expense.amount) || 0) * direction }; }
 function investmentField(type: InvestmentType) { return INVESTMENT_MAPPINGS.find(item => item.id === type)!; }
-
-async function applyInvestmentDelta(uid: string, deltas: Array<{ type: InvestmentType; delta: number }>) {
-  const useful = deltas.filter(item => Number.isFinite(item.delta) && item.delta !== 0);
-  if (!useful.length) return;
-  await runTransaction(firestore, async transaction => {
-    const ref = portfolioRef(uid); const snap = await transaction.get(ref);
-    const data = snap.exists() ? snap.data() : {};
-    const fields = Array.isArray(data.fields) ? data.fields.map((field: any) => ({ ...field, amount: Number(field.amount) || 0 })) : [];
-    useful.forEach(({ type, delta }) => {
-      const mapping = investmentField(type);
-      const index = fields.findIndex((field: any) => field.id === mapping.id);
-      if (index >= 0) fields[index] = { ...fields[index], label: mapping.label, amount: Math.max(0, (Number(fields[index].amount) || 0) + delta), color: fields[index].color || mapping.color };
-      else fields.push({ id: mapping.id, label: mapping.label, amount: Math.max(0, delta), color: mapping.color });
-    });
-    transaction.set(ref, { ...data, fields }, { merge: true });
-  });
-}
-
-async function processDueRecurringItems(uid: string) {
-  try {
-    const recurringSnap = await getDocs(collection(userRoot(uid), 'recurring'));
-    const writes: Promise<void>[] = [];
-    const today = new Date();
-    recurringSnap.docs.forEach((snap) => {
-      const item = { id: snap.id, ...snap.data() } as RecurringItem; const dueDate = getDueDate(item, today); if (!dueDate) return;
-      const occurrenceId = `recurring-${item.id}-${dueDate}`; const ref = doc(userRoot(uid), item.type === 'income' ? 'incomes' : 'expenses', occurrenceId); const createdAt = Date.now();
-      if (item.type === 'income') { const income: Income = { id: occurrenceId, title: item.title, amount: item.amount, date: dueDate, source: 'Recurring', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; writes.push(setDoc(ref, stripUndefined(income), { merge: false })); }
-      else { const title = item.title.toLowerCase(); const categoryId: Expense['categoryId'] = item.type === 'bill' ? 'utilities' : /(sip|mutual fund|investment|stocks|nps|ppf|epf)/i.test(title) ? 'investment' : 'other'; const investmentType: InvestmentType | undefined = categoryId === 'investment' ? /ppf/i.test(title) ? 'ppf' : /mutual fund|sip/i.test(title) ? 'mutual_funds' : /stocks?/i.test(title) ? 'stocks' : /nps/i.test(title) ? 'nps' : /epf/i.test(title) ? 'epf' : 'other_investment' : undefined; const expense: Expense = { id: occurrenceId, title: item.title, amount: item.amount, categoryId, ...(investmentType ? { investmentType } : {}), date: dueDate, paymentMethod: 'bank_transfer', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; writes.push(setDoc(ref, stripUndefined(expense), { merge: false }).then(async () => { await applyInvestmentDelta(uid, [{ type: investmentType || 'other_investment', delta: item.amount }]); })); }
-    });
-    await Promise.all(writes);
-  } catch (error) { console.error('Recurring auto-record error:', error); }
-}
-
-export function subscribeToUserData(uid: string, onChange: (data: UserData) => void, onError?: (error: Error) => void): () => void {
-  const cached = readCache(uid); if (cached) onChange(cached);
-  let expenses: Expense[] = cached?.expenses || []; let incomes: Income[] = cached?.incomes || []; let budgets: Record<string, MonthBudgetConfig> = cached?.budgets || {};
-  let expensesReady = false, incomesReady = false, budgetsReady = false; let recurringProcessed = false;
-  const publish = () => { if (!expensesReady || !incomesReady || !budgetsReady) return; const data: UserData = { expenses: expenses.map(normalizeExpense).sort((a,b)=>b.date.localeCompare(a.date)), incomes: incomes.map(normalizeIncome).sort((a,b)=>b.date.localeCompare(a.date)), budgets: stripUndefined(budgets) }; writeCache(uid, data); onChange(data); if (!recurringProcessed) { recurringProcessed = true; void processDueRecurringItems(uid); } };
-  const unsubscribeExpenses = onSnapshot(collection(userRoot(uid), 'expenses'), snapshot => { expenses = snapshot.docs.map(d => normalizeExpense(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); expensesReady = true; publish(); }, error => onError?.(error));
-  const unsubscribeIncomes = onSnapshot(collection(userRoot(uid), 'incomes'), snapshot => { incomes = snapshot.docs.map(d => normalizeIncome(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); incomesReady = true; publish(); }, error => onError?.(error));
-  const unsubscribeBudgets = onSnapshot(collection(userRoot(uid), 'budgets'), snapshot => { budgets = {}; snapshot.docs.forEach(d => { budgets[d.id] = d.data() as MonthBudgetConfig; }); budgetsReady = true; publish(); }, error => onError?.(error));
-  return () => { unsubscribeExpenses(); unsubscribeIncomes(); unsubscribeBudgets(); };
-}
-
-export async function saveExpense(uid: string, expense: Expense, previousExpense?: Expense) {
-  const normalized = normalizeExpense(expense);
-  const deltas: Array<{ type: InvestmentType; delta: number }> = [];
-  const oldDelta = investmentFieldDelta(previousExpense, -1); const newDelta = investmentFieldDelta(expense, 1);
-  if (oldDelta) deltas.push(oldDelta); if (newDelta) deltas.push(newDelta);
-  await runTransaction(firestore, async transaction => {
-    const expenseRef = doc(userRoot(uid), 'expenses', normalized.id);
-    const portfolio = portfolioRef(uid); const portfolioSnap = deltas.length ? await transaction.get(portfolio) : null;
-    transaction.set(expenseRef, normalized);
-    if (deltas.length && portfolioSnap) {
-      const data = portfolioSnap.exists() ? portfolioSnap.data() : {}; const fields = Array.isArray(data.fields) ? data.fields.map((field: any) => ({ ...field, amount: Number(field.amount) || 0 })) : [];
-      deltas.forEach(({ type, delta }) => { const mapping = investmentField(type); const index = fields.findIndex((field: any) => field.id === mapping.id); if (index >= 0) fields[index] = { ...fields[index], label: mapping.label, amount: Math.max(0, (Number(fields[index].amount) || 0) + delta), color: fields[index].color || mapping.color }; else if (delta > 0) fields.push({ id: mapping.id, label: mapping.label, amount: delta, color: mapping.color }); });
-      transaction.set(portfolio, { ...data, fields }, { merge: true });
-    }
-  });
-}
-
-export async function removeExpense(uid: string, id: string, expense?: Expense) {
-  if (!expense || expense.categoryId !== 'investment') { await deleteDoc(doc(userRoot(uid), 'expenses', id)); return; }
-  await runTransaction(firestore, async transaction => {
-    const expenseRef = doc(userRoot(uid), 'expenses', id); const portfolio = portfolioRef(uid); const portfolioSnap = await transaction.get(portfolio);
-    const data = portfolioSnap.exists() ? portfolioSnap.data() : {}; const fields = Array.isArray(data.fields) ? data.fields.map((field: any) => ({ ...field, amount: Number(field.amount) || 0 })) : [];
-    const mapping = investmentField(expense.investmentType || 'other_investment'); const index = fields.findIndex((field: any) => field.id === mapping.id);
-    if (index >= 0) fields[index] = { ...fields[index], amount: Math.max(0, (Number(fields[index].amount) || 0) - (Number(expense.amount) || 0)) };
-    transaction.delete(expenseRef); transaction.set(portfolio, { ...data, fields }, { merge: true });
-  });
-}
-
+function updatePortfolioFields(data: any, deltas: Array<{ type: InvestmentType; delta: number }>) { const fields = Array.isArray(data?.fields) ? data.fields.map((field: any) => ({ ...field, amount: Number(field.amount) || 0 })) : []; deltas.filter(d => d.delta !== 0).forEach(({ type, delta }) => { const mapping = investmentField(type); const index = fields.findIndex((field: any) => field.id === mapping.id); if (index >= 0) fields[index] = { ...fields[index], label: mapping.label, amount: Math.max(0, (Number(fields[index].amount) || 0) + delta), color: fields[index].color || mapping.color }; else if (delta > 0) fields.push({ id: mapping.id, label: mapping.label, amount: delta, color: mapping.color }); }); return fields; }
+async function applyInvestmentDelta(uid: string, deltas: Array<{ type: InvestmentType; delta: number }>) { if (!deltas.length) return; await runTransaction(firestore, async transaction => { const ref = portfolioRef(uid); const snap = await transaction.get(ref); const data = snap.exists() ? snap.data() : {}; transaction.set(ref, { ...data, fields: updatePortfolioFields(data, deltas) }, { merge: true }); }); }
+async function processDueRecurringItems(uid: string) { try { const recurringSnap = await getDocs(collection(userRoot(uid), 'recurring')); const writes: Promise<void>[] = []; const today = new Date(); recurringSnap.docs.forEach((snap) => { const item = { id: snap.id, ...snap.data() } as RecurringItem; const dueDate = getDueDate(item, today); if (!dueDate) return; const occurrenceId = `recurring-${item.id}-${dueDate}`; const ref = doc(userRoot(uid), item.type === 'income' ? 'incomes' : 'expenses', occurrenceId); const createdAt = Date.now(); if (item.type === 'income') { const income: Income = { id: occurrenceId, title: item.title, amount: item.amount, date: dueDate, source: 'Recurring', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; writes.push(setDoc(ref, stripUndefined(income), { merge: false })); } else { const title = item.title.toLowerCase(); const categoryId: Expense['categoryId'] = item.type === 'bill' ? 'utilities' : /(sip|mutual fund|investment|stocks|nps|ppf|epf)/i.test(title) ? 'investment' : 'other'; const investmentType: InvestmentType | undefined = categoryId === 'investment' ? /ppf/i.test(title) ? 'ppf' : /mutual fund|sip/i.test(title) ? 'mutual_funds' : /stocks?/i.test(title) ? 'stocks' : /nps/i.test(title) ? 'nps' : /epf/i.test(title) ? 'epf' : 'other_investment' : undefined; const expense: Expense = { id: occurrenceId, title: item.title, amount: item.amount, categoryId, ...(investmentType ? { investmentType } : {}), date: dueDate, paymentMethod: 'bank_transfer', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; writes.push(setDoc(ref, stripUndefined(expense), { merge: false }).then(() => investmentType ? applyInvestmentDelta(uid, [{ type: investmentType, delta: item.amount }]) : Promise.resolve())); } }); await Promise.all(writes); } catch (error) { console.error('Recurring auto-record error:', error); } }
+export function subscribeToUserData(uid: string, onChange: (data: UserData) => void, onError?: (error: Error) => void): () => void { const cached = readCache(uid); if (cached) onChange(cached); let expenses: Expense[] = cached?.expenses || []; let incomes: Income[] = cached?.incomes || []; let budgets: Record<string, MonthBudgetConfig> = cached?.budgets || {}; let expensesReady = false, incomesReady = false, budgetsReady = false; let recurringProcessed = false; const publish = () => { if (!expensesReady || !incomesReady || !budgetsReady) return; const data: UserData = { expenses: expenses.map(normalizeExpense).sort((a,b)=>b.date.localeCompare(a.date)), incomes: incomes.map(normalizeIncome).sort((a,b)=>b.date.localeCompare(a.date)), budgets: stripUndefined(budgets) }; writeCache(uid, data); onChange(data); if (!recurringProcessed) { recurringProcessed = true; void processDueRecurringItems(uid); } }; const unsubscribeExpenses = onSnapshot(collection(userRoot(uid), 'expenses'), snapshot => { expenses = snapshot.docs.map(d => normalizeExpense(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); expensesReady = true; publish(); }, error => onError?.(error)); const unsubscribeIncomes = onSnapshot(collection(userRoot(uid), 'incomes'), snapshot => { incomes = snapshot.docs.map(d => normalizeIncome(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); incomesReady = true; publish(); }, error => onError?.(error)); const unsubscribeBudgets = onSnapshot(collection(userRoot(uid), 'budgets'), snapshot => { budgets = {}; snapshot.docs.forEach(d => { budgets[d.id] = d.data() as MonthBudgetConfig; }); budgetsReady = true; publish(); }, error => onError?.(error)); return () => { unsubscribeExpenses(); unsubscribeIncomes(); unsubscribeBudgets(); }; }
+export async function saveExpense(uid: string, expense: Expense, previousExpense?: Expense) { const normalized = normalizeExpense(expense); await runTransaction(firestore, async transaction => { const expenseRef = doc(userRoot(uid), 'expenses', normalized.id); const existingSnap = await transaction.get(expenseRef); const oldExpense = previousExpense || (existingSnap.exists() ? existingSnap.data() as Expense : undefined); const deltas: Array<{ type: InvestmentType; delta: number }> = []; const oldDelta = investmentFieldDelta(oldExpense, -1); const newDelta = investmentFieldDelta(expense, 1); if (oldDelta) deltas.push(oldDelta); if (newDelta) deltas.push(newDelta); let portfolioSnap = null; if (deltas.length) portfolioSnap = await transaction.get(portfolioRef(uid)); transaction.set(expenseRef, normalized); if (portfolioSnap) { const data = portfolioSnap.exists() ? portfolioSnap.data() : {}; transaction.set(portfolioRef(uid), { ...data, fields: updatePortfolioFields(data, deltas) }, { merge: true }); } }); }
+export async function removeExpense(uid: string, id: string, expense?: Expense) { await runTransaction(firestore, async transaction => { const expenseRef = doc(userRoot(uid), 'expenses', id); const existingSnap = await transaction.get(expenseRef); const oldExpense = expense || (existingSnap.exists() ? existingSnap.data() as Expense : undefined); const portfolio = portfolioRef(uid); const portfolioSnap = oldExpense?.categoryId === 'investment' ? await transaction.get(portfolio) : null; if (portfolioSnap) { const data = portfolioSnap.exists() ? portfolioSnap.data() : {}; const delta = investmentFieldDelta(oldExpense, -1)!; transaction.set(portfolio, { ...data, fields: updatePortfolioFields(data, [delta]) }, { merge: true }); } transaction.delete(expenseRef); }); }
 export async function saveIncome(uid: string, income: Income) { const normalized=normalizeIncome(income); await setDoc(doc(userRoot(uid),'incomes',normalized.id),normalized); }
 export async function removeIncome(uid: string, id: string) { await deleteDoc(doc(userRoot(uid),'incomes',id)); }
 export async function saveBudget(uid: string, budget: MonthBudgetConfig) { await setDoc(doc(userRoot(uid),'budgets',budget.monthKey),stripUndefined(budget)); }
