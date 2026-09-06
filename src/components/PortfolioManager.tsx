@@ -1,125 +1,76 @@
 import React, { useMemo, useState } from 'react';
-import { CircleDollarSign, Pencil, Plus, Settings2, Trash2, X } from 'lucide-react';
-import { PortfolioConfig, PortfolioField } from '../services/portfolioService';
+import { CircleDollarSign, Landmark, Pencil, Plus, Target, Trash2, TrendingUp, WalletCards, X } from 'lucide-react';
+import { FinancialGoal, NetWorthItem, PortfolioConfig, PortfolioField } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 
-interface PortfolioManagerProps {
-  config: PortfolioConfig;
-  onSave: (config: PortfolioConfig) => Promise<void>;
-}
-
+interface PortfolioManagerProps { config: PortfolioConfig; onSave: (config: PortfolioConfig) => Promise<void>; }
 const DEFAULT_PALETTE = ['#4f46e5', '#0891b2', '#0d9488', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#64748b'];
-const emptyDraft = { label: '', amount: '' };
-
-function makeId(label: string) {
-  const slug = label.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `${slug || 'asset'}-${Date.now()}`;
-}
+const ASSET_TYPES = ['Cash', 'Bank account', 'Property', 'Vehicle', 'Gold', 'Other asset'];
+const LIABILITY_TYPES = ['Home loan', 'Personal loan', 'Car loan', 'Credit card', 'Other debt'];
+const emptyPortfolioDraft = { label: '', amount: '' };
+const emptyNetWorthDraft = { label: '', amount: '', kind: 'asset' as 'asset' | 'liability', type: 'Cash' };
+const emptyGoalDraft = { name: '', targetAmount: '', currentAmount: '', targetDate: '', monthlyContribution: '' };
+function makeId(prefix: string, label: string) { const slug = label.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); return `${prefix}-${slug || 'item'}-${Date.now()}`; }
+const TabButton = ({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: React.ElementType; children: React.ReactNode }) => <button type="button" onClick={onClick} className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold transition ${active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}><Icon className="h-4 w-4" />{children}</button>;
 
 export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSave }) => {
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [draft, setDraft] = useState(emptyDraft);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const total = useMemo(() => config.fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [config.fields]);
+  const [tab, setTab] = useState<'portfolio' | 'networth' | 'goals'>('portfolio');
+  const [isPortfolioOpen, setIsPortfolioOpen] = useState(false); const [isNetWorthOpen, setIsNetWorthOpen] = useState(false); const [isGoalOpen, setIsGoalOpen] = useState(false);
+  const [portfolioDraft, setPortfolioDraft] = useState(emptyPortfolioDraft); const [netWorthDraft, setNetWorthDraft] = useState(emptyNetWorthDraft); const [goalDraft, setGoalDraft] = useState(emptyGoalDraft);
+  const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null); const [editingNetWorthId, setEditingNetWorthId] = useState<string | null>(null); const [editingGoalId, setEditingGoalId] = useState<string | null>(null); const [saving, setSaving] = useState(false);
+  const fields = config.fields || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];
+  const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);
+  const extraAssets = useMemo(() => netWorthItems.filter(item => item.kind === 'asset').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
+  const liabilities = useMemo(() => netWorthItems.filter(item => item.kind === 'liability').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
+  const totalAssets = portfolioTotal + extraAssets; const netWorth = totalAssets - liabilities;
+  const saveConfig = async (next: PortfolioConfig) => { setSaving(true); try { await onSave(next); } finally { setSaving(false); } };
+  const closePortfolioEditor = () => { setIsPortfolioOpen(false); setEditingPortfolioId(null); setPortfolioDraft(emptyPortfolioDraft); };
+  const closeNetWorthEditor = () => { setIsNetWorthOpen(false); setEditingNetWorthId(null); setNetWorthDraft(emptyNetWorthDraft); };
+  const closeGoalEditor = () => { setIsGoalOpen(false); setEditingGoalId(null); setGoalDraft(emptyGoalDraft); };
 
-  const openEdit = (field: PortfolioField) => {
-    setEditingId(field.id);
-    setDraft({ label: field.label, amount: String(field.amount) });
-    setIsConfigOpen(true);
-  };
+  const openEditPortfolio = (field: PortfolioField) => { setEditingPortfolioId(field.id); setPortfolioDraft({ label: field.label, amount: String(field.amount) }); setIsPortfolioOpen(true); };
+  const savePortfolioField = async (event: React.FormEvent) => { event.preventDefault(); const label = portfolioDraft.label.trim(); const amount = Number(portfolioDraft.amount); if (!label || !Number.isFinite(amount) || amount < 0) return; const nextFields = editingPortfolioId ? fields.map(field => field.id === editingPortfolioId ? { ...field, label, amount } : field) : [...fields, { id: makeId('asset', label), label, amount, color: DEFAULT_PALETTE[fields.length % DEFAULT_PALETTE.length] }]; await saveConfig({ ...config, fields: nextFields }); closePortfolioEditor(); };
+  const removePortfolio = async (id: string) => { const field = fields.find(item => item.id === id); if (!field || !window.confirm(`Remove ${field.label} from your portfolio?`)) return; await saveConfig({ ...config, fields: fields.filter(item => item.id !== id) }); };
 
-  const closeEditor = () => {
-    setIsConfigOpen(false);
-    setEditingId(null);
-    setDraft(emptyDraft);
-  };
+  const openEditNetWorth = (item: NetWorthItem) => { setEditingNetWorthId(item.id); setNetWorthDraft({ label: item.label, amount: String(item.amount), kind: item.kind, type: item.type }); setIsNetWorthOpen(true); };
+  const changeNetWorthKind = (kind: 'asset' | 'liability') => setNetWorthDraft(current => ({ ...current, kind, type: kind === 'asset' ? ASSET_TYPES[0] : LIABILITY_TYPES[0] }));
+  const saveNetWorthItem = async (event: React.FormEvent) => { event.preventDefault(); const label = netWorthDraft.label.trim(); const amount = Number(netWorthDraft.amount); if (!label || !Number.isFinite(amount) || amount < 0) return; const item: NetWorthItem = { id: editingNetWorthId || makeId(netWorthDraft.kind, label), label, amount, kind: netWorthDraft.kind, type: netWorthDraft.type }; const nextItems = editingNetWorthId ? netWorthItems.map(existing => existing.id === editingNetWorthId ? item : existing) : [...netWorthItems, item]; await saveConfig({ ...config, netWorthItems: nextItems }); closeNetWorthEditor(); };
+  const removeNetWorth = async (id: string) => { const item = netWorthItems.find(entry => entry.id === id); if (!item || !window.confirm(`Remove ${item.label} from net worth?`)) return; await saveConfig({ ...config, netWorthItems: netWorthItems.filter(entry => entry.id !== id) }); };
 
-  const saveField = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const label = draft.label.trim();
-    const amount = Number(draft.amount);
-    if (!label || !Number.isFinite(amount) || amount < 0) return;
-    const nextFields = editingId
-      ? config.fields.map((field) => field.id === editingId ? { ...field, label, amount } : field)
-      : [...config.fields, { id: makeId(label), label, amount, color: DEFAULT_PALETTE[config.fields.length % DEFAULT_PALETTE.length] }];
-    setSaving(true);
-    try { await onSave({ ...config, fields: nextFields }); closeEditor(); } finally { setSaving(false); }
-  };
+  const openEditGoal = (goal: FinancialGoal) => { setEditingGoalId(goal.id); setGoalDraft({ name: goal.name, targetAmount: String(goal.targetAmount), currentAmount: String(goal.currentAmount), targetDate: goal.targetDate, monthlyContribution: String(goal.monthlyContribution) }); setIsGoalOpen(true); };
+  const saveGoal = async (event: React.FormEvent) => { event.preventDefault(); const name = goalDraft.name.trim(); const targetAmount = Number(goalDraft.targetAmount); const currentAmount = Number(goalDraft.currentAmount || 0); const monthlyContribution = Number(goalDraft.monthlyContribution || 0); if (!name || !Number.isFinite(targetAmount) || targetAmount <= 0 || !Number.isFinite(currentAmount) || currentAmount < 0 || !goalDraft.targetDate || !Number.isFinite(monthlyContribution) || monthlyContribution < 0) return; const goal: FinancialGoal = { id: editingGoalId || makeId('goal', name), name, targetAmount, currentAmount, targetDate: goalDraft.targetDate, monthlyContribution }; const nextGoals = editingGoalId ? goals.map(existing => existing.id === editingGoalId ? goal : existing) : [...goals, goal]; await saveConfig({ ...config, goals: nextGoals }); closeGoalEditor(); };
+  const removeGoal = async (id: string) => { const goal = goals.find(item => item.id === id); if (!goal || !window.confirm(`Delete the ${goal.name} goal?`)) return; await saveConfig({ ...config, goals: goals.filter(item => item.id !== id) }); };
 
-  const removeField = async (id: string) => {
-    const field = config.fields.find((item) => item.id === id);
-    if (!field || !window.confirm(`Remove ${field.label} from your portfolio?`)) return;
-    setSaving(true);
-    try { await onSave({ ...config, fields: config.fields.filter((item) => item.id !== id) }); } finally { setSaving(false); }
-  };
+  return <section className="space-y-5">
+    <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-5 sm:p-6 shadow-sm"><div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Wealth</p><h2 className="mt-1 text-xl font-bold text-slate-900">Your financial picture</h2><p className="mt-1 text-sm text-slate-500">Track investments, net worth and the goals you are building toward.</p></div><div className="flex gap-1 rounded-2xl bg-white/80 p-1 border border-white overflow-x-auto"><TabButton active={tab === 'portfolio'} onClick={() => setTab('portfolio')} icon={WalletCards}>Portfolio</TabButton><TabButton active={tab === 'networth'} onClick={() => setTab('networth')} icon={TrendingUp}>Net Worth</TabButton><TabButton active={tab === 'goals'} onClick={() => setTab('goals')} icon={Target}>Goals</TabButton></div></div></div>
 
-  return (
-    <section className="space-y-5">
-      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Portfolio</p>
-            <h2 className="mt-1 text-xl font-bold text-slate-900">Your Investment Portfolio</h2>
-            <p className="mt-1 text-sm text-slate-500">Track the current value of your investments and savings in one place.</p>
-          </div>
-          <button type="button" onClick={() => setIsConfigOpen(true)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition">
-            <Settings2 className="h-4 w-4" /> Configure fields
-          </button>
-        </div>
-        <div className="mt-6 rounded-xl border border-white/80 bg-white/80 p-5">
-          <p className="text-xs font-medium text-slate-500">Total Portfolio Value</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(total)}</p>
-          <p className="mt-1 text-xs text-slate-400">Across {config.fields.length} configured field{config.fields.length === 1 ? '' : 's'}</p>
-        </div>
-      </div>
+    {tab === 'portfolio' && <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4"><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-medium text-slate-500">Total investments</p><p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{formatCurrency(portfolioTotal)}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-medium text-slate-500">Investment categories</p><p className="mt-1 text-2xl font-bold text-slate-900">{fields.length}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-medium text-slate-500">Share of net worth</p><p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums">{netWorth > 0 ? `${Math.round((portfolioTotal / netWorth) * 100)}%` : '—'}</p></div></div>
+      <div className="flex items-center justify-between"><div><h3 className="text-base font-bold text-slate-900">Investments</h3><p className="text-xs text-slate-500 mt-0.5">Current values across your investment buckets.</p></div><button type="button" onClick={() => { setEditingPortfolioId(null); setPortfolioDraft(emptyPortfolioDraft); setIsPortfolioOpen(true); }} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> Add investment</button></div>
+      {fields.length === 0 ? <Empty icon={CircleDollarSign} title="No investments yet" text="Add mutual funds, stocks, PPF, EPF, NPS or any other investment you track." /> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{fields.map(field => <div key={field.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${field.color}18`, color: field.color }}><CircleDollarSign className="h-5 w-5" /></div><div className="min-w-0"><p className="text-sm font-semibold text-slate-900 truncate">{field.label}</p><p className="text-xs text-slate-400">Current value</p></div></div><Actions onEdit={() => openEditPortfolio(field)} onDelete={() => removePortfolio(field.id)} /></div><p className="mt-6 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(field.amount)}</p></div>)}</div>}
+    </>}
 
-      {config.fields.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <CircleDollarSign className="mx-auto h-10 w-10 text-slate-300" />
-          <h3 className="mt-3 text-sm font-bold text-slate-900">No portfolio fields yet</h3>
-          <p className="mt-1 text-xs text-slate-500">Add PPF, Mutual Funds, Stocks or any custom field you track.</p>
-          <button type="button" onClick={() => { setEditingId(null); setDraft(emptyDraft); setIsConfigOpen(true); }} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> Add field</button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {config.fields.map((field) => (
-            <div key={field.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${field.color}18`, color: field.color }}><CircleDollarSign className="h-5 w-5" /></div>
-                  <div className="min-w-0"><p className="text-sm font-semibold text-slate-900 truncate">{field.label}</p><p className="text-xs text-slate-400">Current value</p></div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button type="button" onClick={() => openEdit(field)} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label={`Edit ${field.label}`} title="Edit field"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button type="button" onClick={() => removeField(field.id)} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Remove ${field.label}`} title="Remove field"><Trash2 className="h-3.5 w-3.5" /></button>
-                </div>
-              </div>
-              <p className="mt-6 text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(field.amount)}</p>
-            </div>
-          ))}
-        </div>
-      )}
+    {tab === 'networth' && <>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm"><div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Current net worth</p><p className="mt-1 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 tabular-nums">{formatCurrency(netWorth)}</p><p className="mt-1 text-xs text-slate-500">Assets minus liabilities</p></div><div className="grid grid-cols-2 gap-3 sm:min-w-[320px]"><div className="rounded-xl bg-emerald-50 p-3"><p className="text-[11px] text-emerald-700">Total assets</p><p className="mt-1 text-lg font-bold text-emerald-800 tabular-nums">{formatCurrency(totalAssets)}</p></div><div className="rounded-xl bg-rose-50 p-3"><p className="text-[11px] text-rose-700">Liabilities</p><p className="mt-1 text-lg font-bold text-rose-800 tabular-nums">{formatCurrency(liabilities)}</p></div></div></div></div>
+      <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 flex items-center gap-3"><div className="h-9 w-9 rounded-xl bg-white flex items-center justify-center text-indigo-600"><WalletCards className="h-4 w-4" /></div><div className="min-w-0"><p className="text-sm font-semibold text-slate-900">Investment portfolio included automatically</p><p className="text-xs text-slate-500">{formatCurrency(portfolioTotal)} from Portfolio is already counted in total assets. Add cash, property, vehicles and debts below.</p></div></div>
+      <div className="flex items-center justify-between"><div><h3 className="text-base font-bold text-slate-900">Assets & liabilities</h3><p className="text-xs text-slate-500 mt-0.5">Add the parts of your balance sheet outside investments.</p></div><button type="button" onClick={() => { setEditingNetWorthId(null); setNetWorthDraft(emptyNetWorthDraft); setIsNetWorthOpen(true); }} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> Add item</button></div>
+      {netWorthItems.length === 0 ? <Empty icon={Landmark} title="Complete your net worth" text="Add bank balances, property, vehicles, loans, credit cards and other assets or liabilities." /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{netWorthItems.map(item => <div key={item.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><div className={`h-10 w-10 rounded-xl flex items-center justify-center ${item.kind === 'asset' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}><Landmark className="h-5 w-5" /></div><div className="min-w-0"><p className="text-sm font-semibold text-slate-900 truncate">{item.label}</p><p className="text-xs text-slate-400">{item.type}</p></div></div><Actions onEdit={() => openEditNetWorth(item)} onDelete={() => removeNetWorth(item.id)} /></div><p className={`mt-5 text-2xl font-bold tabular-nums ${item.kind === 'asset' ? 'text-emerald-700' : 'text-rose-700'}`}>{item.kind === 'liability' ? '−' : ''}{formatCurrency(item.amount)}</p></div>)}</div>}
+    </>}
 
-      {isConfigOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <div><h3 className="text-base font-bold text-slate-900">{editingId ? 'Edit portfolio field' : 'Configure portfolio'}</h3><p className="mt-0.5 text-xs text-slate-500">Add, rename, remove and update any amount field.</p></div>
-              <button type="button" onClick={closeEditor} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close"><X className="h-4 w-4" /></button>
-            </div>
-            <form onSubmit={saveField} className="p-5 space-y-4">
-              <div><label className="text-xs font-semibold text-slate-700">Field name</label><input autoFocus value={draft.label} onChange={(e) => setDraft((current) => ({ ...current, label: e.target.value }))} placeholder="e.g. PPF, Stocks, Real Estate" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" /></div>
-              <div><label className="text-xs font-semibold text-slate-700">Current amount</label><input type="number" min="0" step="0.01" value={draft.amount} onChange={(e) => setDraft((current) => ({ ...current, amount: e.target.value }))} placeholder="0" className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" /></div>
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-                <button type="button" onClick={closeEditor} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-                <button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add field'}</button>
-              </div>
-            </form>
-            {!editingId && config.fields.length > 0 && <div className="border-t border-slate-100 px-5 py-4"><p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Existing fields</p><div className="flex flex-wrap gap-2">{config.fields.map((field) => <button key={field.id} type="button" onClick={() => openEdit(field)} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100">{field.label}</button>)}</div></div>}
-          </div>
-        </div>
-      )}
-    </section>
-  );
+    {tab === 'goals' && <>
+      <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-5 sm:p-6"><div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Financial goals</p><h3 className="mt-1 text-xl font-bold text-slate-900">Turn plans into progress</h3><p className="mt-1 text-sm text-slate-500">Set a target, deadline and monthly contribution for the things that matter.</p></div><button type="button" onClick={() => { setEditingGoalId(null); setGoalDraft(emptyGoalDraft); setIsGoalOpen(true); }} className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> New goal</button></div></div>
+      {goals.length === 0 ? <Empty icon={Target} title="No goals yet" text="Create goals for an emergency fund, home, travel, education or any other target." /> : <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{goals.map(goal => { const progress = Math.min(100, Math.max(0, (goal.currentAmount / goal.targetAmount) * 100)); const remaining = Math.max(0, goal.targetAmount - goal.currentAmount); const target = goal.targetDate ? new Date(`${goal.targetDate}T00:00:00`) : null; const days = target ? Math.ceil((target.getTime() - Date.now()) / 86400000) : 0; return <div key={goal.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3 min-w-0"><div className="h-10 w-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><Target className="h-5 w-5" /></div><div className="min-w-0"><p className="text-sm font-bold text-slate-900 truncate">{goal.name}</p><p className="text-xs text-slate-400">Target {goal.targetDate ? new Date(`${goal.targetDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p></div></div><Actions onEdit={() => openEditGoal(goal)} onDelete={() => removeGoal(goal.id)} /></div><div className="mt-5 flex items-end justify-between gap-3"><div><p className="text-2xl font-bold text-slate-900 tabular-nums">{formatCurrency(goal.currentAmount)}</p><p className="text-xs text-slate-400">of {formatCurrency(goal.targetAmount)}</p></div><p className="text-lg font-bold text-indigo-600 tabular-nums">{Math.round(progress)}%</p></div><div className="mt-3 h-2.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${progress}%` }} /></div><div className="mt-4 grid grid-cols-2 gap-3"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Remaining</p><p className="mt-1 text-sm font-bold text-slate-800 tabular-nums">{formatCurrency(remaining)}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Monthly plan</p><p className="mt-1 text-sm font-bold text-slate-800 tabular-nums">{formatCurrency(goal.monthlyContribution)}</p></div></div><p className={`mt-3 text-xs font-medium ${days < 0 ? 'text-rose-600' : days <= 90 ? 'text-amber-600' : 'text-slate-500'}`}>{days < 0 ? 'Target date passed' : days === 0 ? 'Target date is today' : `${days.toLocaleString('en-IN')} days to target`}</p></div>; })}</div>}
+    </>}
+
+    {isPortfolioOpen && <Modal title={editingPortfolioId ? 'Edit investment' : 'Add investment'} subtitle="Track the current value of an investment category." onClose={closePortfolioEditor}><form onSubmit={savePortfolioField} className="p-5 space-y-4"><Field label="Investment name"><input autoFocus value={portfolioDraft.label} onChange={e => setPortfolioDraft(v => ({ ...v, label: e.target.value }))} placeholder="e.g. Mutual Funds" className={inputClass} /></Field><Field label="Current value"><input type="number" min="0" step="0.01" value={portfolioDraft.amount} onChange={e => setPortfolioDraft(v => ({ ...v, amount: e.target.value }))} placeholder="0" className={inputClass} /></Field><FormActions saving={saving} onCancel={closePortfolioEditor} label={editingPortfolioId ? 'Save changes' : 'Add investment'} /></form></Modal>}
+    {isNetWorthOpen && <Modal title={editingNetWorthId ? 'Edit net worth item' : 'Add net worth item'} subtitle="Add assets or liabilities outside your investment portfolio." onClose={closeNetWorthEditor}><form onSubmit={saveNetWorthItem} className="p-5 space-y-4"><div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => changeNetWorthKind('asset')} className={`rounded-xl border px-3 py-2.5 text-sm font-semibold ${netWorthDraft.kind === 'asset' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}>Asset</button><button type="button" onClick={() => changeNetWorthKind('liability')} className={`rounded-xl border px-3 py-2.5 text-sm font-semibold ${netWorthDraft.kind === 'liability' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-slate-200 text-slate-500'}`}>Liability</button></div><Field label="Name"><input autoFocus value={netWorthDraft.label} onChange={e => setNetWorthDraft(v => ({ ...v, label: e.target.value }))} placeholder="e.g. Savings account" className={inputClass} /></Field><Field label="Type"><select value={netWorthDraft.type} onChange={e => setNetWorthDraft(v => ({ ...v, type: e.target.value }))} className={inputClass}>{(netWorthDraft.kind === 'asset' ? ASSET_TYPES : LIABILITY_TYPES).map(type => <option key={type}>{type}</option>)}</select></Field><Field label="Current amount"><input type="number" min="0" step="0.01" value={netWorthDraft.amount} onChange={e => setNetWorthDraft(v => ({ ...v, amount: e.target.value }))} placeholder="0" className={inputClass} /></Field><FormActions saving={saving} onCancel={closeNetWorthEditor} label={editingNetWorthId ? 'Save changes' : 'Add item'} /></form></Modal>}
+    {isGoalOpen && <Modal title={editingGoalId ? 'Edit goal' : 'Create a financial goal'} subtitle="Track a target, deadline and monthly contribution." onClose={closeGoalEditor}><form onSubmit={saveGoal} className="p-5 space-y-4"><Field label="Goal name"><input autoFocus value={goalDraft.name} onChange={e => setGoalDraft(v => ({ ...v, name: e.target.value }))} placeholder="e.g. Emergency fund, Home down payment" className={inputClass} /></Field><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><Field label="Target amount"><input type="number" min="1" step="0.01" value={goalDraft.targetAmount} onChange={e => setGoalDraft(v => ({ ...v, targetAmount: e.target.value }))} placeholder="0" className={inputClass} /></Field><Field label="Current amount"><input type="number" min="0" step="0.01" value={goalDraft.currentAmount} onChange={e => setGoalDraft(v => ({ ...v, currentAmount: e.target.value }))} placeholder="0" className={inputClass} /></Field><Field label="Target date"><input type="date" value={goalDraft.targetDate} onChange={e => setGoalDraft(v => ({ ...v, targetDate: e.target.value }))} className={inputClass} /></Field><Field label="Monthly contribution"><input type="number" min="0" step="0.01" value={goalDraft.monthlyContribution} onChange={e => setGoalDraft(v => ({ ...v, monthlyContribution: e.target.value }))} placeholder="0" className={inputClass} /></Field></div><FormActions saving={saving} onCancel={closeGoalEditor} label={editingGoalId ? 'Save changes' : 'Create goal'} /></form></Modal>}
+  </section>;
 };
+
+const inputClass = 'mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100';
+const Empty = ({ icon: Icon, title, text }: { icon: React.ElementType; title: string; text: string }) => <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center"><Icon className="mx-auto h-10 w-10 text-slate-300" /><h3 className="mt-3 text-sm font-bold text-slate-900">{title}</h3><p className="mt-1 text-xs text-slate-500">{text}</p></div>;
+const Actions = ({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) => <div className="flex items-center gap-1"><button type="button" onClick={onEdit} className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100"><Pencil className="h-3.5 w-3.5" /></button><button type="button" onClick={onDelete} className="rounded-md p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" /></button></div>;
+const Modal = ({ title, subtitle, onClose, children }: { title: string; subtitle: string; onClose: () => void; children: React.ReactNode }) => <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"><div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-slate-200"><div className="flex items-center justify-between border-b border-slate-100 px-5 py-4"><div><h3 className="text-base font-bold text-slate-900">{title}</h3><p className="mt-0.5 text-xs text-slate-500">{subtitle}</p></div><button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button></div>{children}</div></div>;
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => <div><label className="text-xs font-semibold text-slate-700">{label}</label>{children}</div>;
+const FormActions = ({ saving, onCancel, label }: { saving: boolean; onCancel: () => void; label: string }) => <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2"><button type="button" onClick={onCancel} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving…' : label}</button></div>;
