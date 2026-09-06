@@ -25,10 +25,17 @@ aside > div:first-child b {
   letter-spacing: -.035em;
 }
 aside > div:first-child b::after {
-  content: 'AHVIQ';
+  content: 'AHV';
   font-size: 1.18rem;
   font-weight: 800;
   letter-spacing: -.035em;
+}
+aside > div:first-child b::before {
+  content: 'IQ';
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  color: var(--ahviq-blue);
 }
 aside > div:first-child p { font-size: 0 !important; }
 aside > div:first-child p::after {
