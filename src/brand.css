@@ -157,25 +157,40 @@ input, select, textarea {
   border-color: #dfe6f0 !important;
   border-radius: 11px !important;
   background: #fff !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
 }
 input:focus, select:focus, textarea:focus {
   border-color: #7aa7f8 !important;
   box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
 }
 
-/* iOS Safari can give native date inputs an intrinsic width larger than their parent. */
+/* iOS Safari gives date inputs an intrinsic minimum width. Constrain the
+   control to its grid/flex cell so the Goal modal remains aligned. */
 input[type="date"] {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
+  min-inline-size: 0 !important;
+  inline-size: 100% !important;
   box-sizing: border-box !important;
   display: block !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 }
 
-/* Keep the mobile experience spacious and vertically scrollable. */
 @media (max-width:767px) {
   main { padding: 10px 10px 22px !important; }
   main > section { border-radius: 16px !important; }
   #metric-summary-grid > div { border-radius: 14px !important; }
   aside { box-shadow: 12px 0 32px rgba(37,63,110,.08) !important; }
+
+  /* Prevent a date control from exceeding its modal/input column on iPhone. */
+  input[type="date"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-inline-size: 0 !important;
+  }
 }
