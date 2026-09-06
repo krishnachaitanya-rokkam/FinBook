@@ -10,7 +10,7 @@ const blank:Omit<RecurringItem,'id'>={title:'',type:'expense',amount:0,day:1,mon
 const money=(n:number)=>`₹${Math.round(n).toLocaleString('en-IN')}`;
 const key=(u?:string)=>`finbook-recurring-${u||'local'}-v1`,mkey=(u:string)=>`finbook-recurring-${u}-firebase-migrated-v2`;
 const legacyKinds=['bill','subscription','recurring'];
-const normalize=(raw:RecurringItem):RecurringItem=>{const i={...raw};const legacy=i.kind;if(!i.categoryId&&legacy&& !legacyKinds.includes(legacy))i.categoryId=legacy;if(legacy==='subscription')i.type='subscription';else if(legacy==='bill')i.type='bill';return{...i,categoryId:i.categoryId||'other'}};
+const normalize=(raw:RecurringItem):RecurringItem=>{const i={...raw};const legacy=i.kind;if(!i.categoryId&&legacy&&!legacyKinds.includes(legacy))i.categoryId=legacy;if(legacy==='subscription')i.type='subscription';else if(legacy==='bill')i.type='bill';return{...i,categoryId:i.categoryId||'other'}};
 const monthName=(m?:number)=>m?new Date(2026,m-1,1).toLocaleString('en-IN',{month:'long'}):'';
 const nextDue=(i:RecurringItem,from=new Date())=>{const y=from.getFullYear(),m=from.getMonth();if(i.frequency==='yearly'){let d=new Date(y,(i.month||1)-1,Math.min(i.day,28));if(d<from)d=new Date(y+1,(i.month||1)-1,Math.min(i.day,28));return d}let d=new Date(y,m,Math.min(i.day,28));if(d<from)d=new Date(y,m+1,Math.min(i.day,28));return d};
 const categoryName=(id?:string)=>CATEGORIES.find(c=>c.id===id)?.name||'Miscellaneous';
