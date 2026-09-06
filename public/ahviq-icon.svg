@@ -1,11 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
   <defs>
-    <linearGradient id="ahviqBlue" x1="35" y1="220" x2="220" y2="35" gradientUnits="userSpaceOnUse"><stop stop-color="#0057FF"/><stop offset="1" stop-color="#168BFF"/></linearGradient>
-    <linearGradient id="ahviqWhite" x1="72" y1="198" x2="188" y2="62" gradientUnits="userSpaceOnUse"><stop stop-color="#BDE8FF"/><stop offset="0.48" stop-color="#FFFFFF"/><stop offset="1" stop-color="#FFFFFF"/></linearGradient>
+    <linearGradient id="blue" x1="35" y1="220" x2="220" y2="35" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0057FF"/>
+      <stop offset="1" stop-color="#168BFF"/>
+    </linearGradient>
   </defs>
-  <circle cx="128" cy="128" r="118" fill="url(#ahviqBlue)"/>
-  <path d="M57 145C42 128 45 100 62 86C79 72 105 75 123 91L176 139C191 153 214 151 224 136C235 119 229 96 212 85C196 75 177 78 163 91L88 166C73 181 49 178 39 162" stroke="url(#ahviqWhite)" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M119 145L163 101C179 85 194 77 211 78" stroke="#FFFFFF" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M190 66H224V100M224 66L181 109" stroke="#FFFFFF" stroke-width="17" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M151 113H194M151 128H190M164 113C177 113 184 119 184 128C184 137 177 143 164 143H157L187 174" stroke="#FFFFFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#blue)"/>
+  <path d="M128 91V119M110 130L78 151M146 130L178 151" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="128" cy="68" r="25" fill="#FFFFFF"/>
+  <circle cx="128" cy="128" r="25" fill="#FFFFFF"/>
+  <circle cx="68" cy="164" r="25" fill="#FFFFFF"/>
+  <circle cx="188" cy="164" r="25" fill="#FFFFFF"/>
 </svg>
