@@ -12,24 +12,35 @@
 /* Sidebar brand */
 aside > div:first-child .h-10.w-10,
 aside > div:first-child .h-9.w-9 {
-  background: #eef4ff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important;
+  background: #eef4ff url('/ahviq-icon.svg?v=3') center / 100% 100% no-repeat !important;
   color: transparent !important;
   border-radius: 14px !important;
   box-shadow: 0 6px 16px rgba(37,99,235,.10);
 }
 aside > div:first-child .h-10.w-10 svg,
 aside > div:first-child .h-9.w-9 svg { display: none !important; }
+
+/* Replace legacy wordmark text with AHV + IQ. */
 aside > div:first-child b {
-  font-size: 1.18rem !important;
+  font-size: 0 !important;
   font-weight: 800 !important;
   letter-spacing: -.035em;
   color: transparent !important;
-  background: linear-gradient(90deg, var(--ahviq-ink) 0 58%, var(--ahviq-blue) 58% 100%) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
 }
-aside > div:first-child b::before,
-aside > div:first-child b::after { content: none !important; display: none !important; }
+aside > div:first-child b::before {
+  content: 'AHV';
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  color: var(--ahviq-ink);
+}
+aside > div:first-child b::after {
+  content: 'IQ';
+  font-size: 1.18rem;
+  font-weight: 800;
+  letter-spacing: -.035em;
+  color: var(--ahviq-blue);
+}
 aside > div:first-child p { font-size: 0 !important; }
 aside > div:first-child p::after {
   content: 'Your money. Your view.';
