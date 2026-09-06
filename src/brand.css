@@ -163,6 +163,15 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
 }
 
+/* iOS Safari can give native date inputs an intrinsic width larger than their parent. */
+input[type="date"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  display: block !important;
+}
+
 /* Keep the mobile experience spacious and vertically scrollable. */
 @media (max-width:767px) {
   main { padding: 10px 10px 22px !important; }
