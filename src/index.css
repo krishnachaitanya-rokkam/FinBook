@@ -48,8 +48,9 @@ main > section { padding: 16px !important; }
   header > div > div:last-child { width:100%; min-width:0; justify-content:space-between; flex-wrap:nowrap; gap:4px !important; }
   header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink:0; }
   main { width:100%; box-sizing:border-box; padding:10px 10px 18px !important; gap:10px !important; }
-  main > div:first-child { flex-wrap:nowrap !important; overflow-x:auto; justify-content:flex-start !important; scrollbar-width:none; -ms-overflow-style:none; }
-  main > div:first-child::-webkit-scrollbar { display:none; } main > div:first-child button { flex-shrink:0; }
+  /* Cash-flow tabs: keep every option visible and make each one a direct, single-tap target. */
+  main > div:first-child { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px !important; width:100%; overflow:visible !important; justify-content:initial !important; }
+  main > div:first-child button { min-width:0 !important; width:100%; flex:none !important; white-space:nowrap; }
   main > section { padding:12px !important; border-radius:16px; }
   main section > div:first-child { flex-wrap:wrap; align-items:flex-start; gap:9px; }
   main section > div:first-child > div:last-child { width:100%; justify-content:flex-start; flex-wrap:wrap; }
@@ -60,7 +61,14 @@ main > section { padding: 16px !important; }
   #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size:10px !important; }
 }
 @media (min-width:641px) { main { gap:16px; } }
-@media (max-width:380px) { header > div > div:first-child p { display:none; } main { padding-left:8px !important; padding-right:8px !important; } main > div:first-child button { padding-left:9px !important; padding-right:9px !important; } #metric-summary-grid > div { padding:10px !important; } #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size:14px !important; } }
+@media (max-width:380px) {
+  header > div > div:first-child p { display:none; }
+  main { padding-left:8px !important; padding-right:8px !important; }
+  main > div:first-child { grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px !important; }
+  main > div:first-child button { padding-left:7px !important; padding-right:7px !important; }
+  #metric-summary-grid > div { padding:10px !important; }
+  #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size:14px !important; }
+}
 button[class*="fixed"][class*="bottom-"] { display:none !important; }
 button:has(svg.lucide-receipt) > svg.lucide-receipt { display:none !important; }
 button:has(svg.lucide-receipt)::before { content:'▤'; font-size:1.25rem; line-height:1; font-weight:500; }
