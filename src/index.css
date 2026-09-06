@@ -94,13 +94,15 @@ aside > div:first-child p { font-size: 0 !important; }
 aside > div:first-child p::after { content: 'Your money. Your view.'; font-size: .72rem; }
 
 @media (max-width:767px) {
+  /* Keep the document itself vertically scrollable on iPhone/iPad. */
+  html, body, #root { min-height: 100%; height: auto !important; overflow-x: hidden !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
   header > div { width: 100%; box-sizing: border-box; padding: 9px 11px !important; flex-direction: column; align-items: stretch !important; gap: 7px !important; }
   header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
   header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
   header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
   header b { font-size: 0 !important; display: flex !important; align-items: center; gap: 0; letter-spacing: -.03em; }
   header b::before, header b::after { content: none !important; display: none !important; }
-  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; display: block !important; }
+  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; display: block !important; overflow: visible !important; }
   main > div:first-child { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; width: 100%; overflow-x: auto !important; overflow-y: hidden; justify-content: flex-start !important; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x proximity; overscroll-behavior-x: contain; touch-action: pan-x; padding: 1px 1px 4px; }
   main > div:first-child::-webkit-scrollbar { display: none; }
   main > div:first-child button { flex: 0 0 auto !important; width: auto !important; min-width: 112px !important; white-space: nowrap; scroll-snap-align: start; padding-top: 9px !important; padding-bottom: 9px !important; box-shadow: 0 2px 8px rgba(23,21,42,.04); }
@@ -117,7 +119,7 @@ aside > div:first-child p::after { content: 'Your money. Your view.'; font-size:
   #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: clamp(14px,4.2vw,18px) !important; font-weight: 700 !important; }
   #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
 
-  /* Fix Settings on narrow screens: force a single vertical column. */
+  /* Settings: one vertical document flow, with no vertical overflow clipping. */
   main > div.w-full.min-w-0.max-w-full.space-y-4.overflow-hidden,
   main > div.w-full.min-w-0.max-w-full.space-y-4.sm\:space-y-5.overflow-hidden {
     display: block !important;
@@ -125,6 +127,7 @@ aside > div:first-child p::after { content: 'Your money. Your view.'; font-size:
     min-width: 0 !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
+    overflow-y: visible !important;
   }
   main > div.w-full.min-w-0.max-w-full.space-y-4.overflow-hidden > *,
   main > div.w-full.min-w-0.max-w-full.space-y-4.sm\:space-y-5.overflow-hidden > * {
