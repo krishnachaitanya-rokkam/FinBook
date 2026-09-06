@@ -65,25 +65,11 @@ header {
   backdrop-filter: blur(14px);
 }
 button { transition: background-color .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease; }
-button.bg-slate-900, button[class*="bg-indigo-"], button[class*="bg-violet-"] {
-  box-shadow: 0 6px 18px rgba(99,91,255,.18);
-}
-button.bg-slate-900:hover, button[class*="bg-indigo-"]:hover, button[class*="bg-violet-"]:hover {
-  box-shadow: 0 9px 22px rgba(99,91,255,.24);
-  transform: translateY(-1px);
-}
-input, select, textarea {
-  border-color: #dfdce8 !important;
-  background-color: #fff !important;
-  color: var(--ahviq-ink) !important;
-  border-radius: 12px !important;
-}
+button.bg-slate-900, button[class*="bg-indigo-"], button[class*="bg-violet-"] { box-shadow: 0 6px 18px rgba(99,91,255,.18); }
+button.bg-slate-900:hover, button[class*="bg-indigo-"]:hover, button[class*="bg-violet-"]:hover { box-shadow: 0 9px 22px rgba(99,91,255,.24); transform: translateY(-1px); }
+input, select, textarea { border-color: #dfdce8 !important; background-color: #fff !important; color: var(--ahviq-ink) !important; border-radius: 12px !important; }
 input::placeholder, textarea::placeholder { color: #a09caf; }
-input:focus, select:focus, textarea:focus {
-  border-color: #8078ff !important;
-  box-shadow: 0 0 0 3px rgba(99,91,255,.10) !important;
-  outline: none;
-}
+input:focus, select:focus, textarea:focus { border-color: #8078ff !important; box-shadow: 0 0 0 3px rgba(99,91,255,.10) !important; outline: none; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #d2cfdd; border-radius: 9999px; }
@@ -99,11 +85,7 @@ main > div:first-child button[class*="bg-indigo-"] { background: var(--ahviq-ink
 
 /* AHVIQ logo stays in the sidebar only. */
 aside > div:first-child .h-10.w-10,
-aside > div:first-child .h-9.w-9 {
-  background: #f3f1ff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important;
-  color: transparent !important;
-  border-radius: 13px !important;
-}
+aside > div:first-child .h-9.w-9 { background: #f3f1ff url('/ahviq-icon.svg') center / 100% 100% no-repeat !important; color: transparent !important; border-radius: 13px !important; }
 aside > div:first-child .h-10.w-10 svg,
 aside > div:first-child .h-9.w-9 svg { display: none !important; }
 aside > div:first-child b { font-size: 0 !important; letter-spacing: -.02em; }
@@ -112,16 +94,13 @@ aside > div:first-child p { font-size: 0 !important; }
 aside > div:first-child p::after { content: 'Your money. Your view.'; font-size: .72rem; }
 
 @media (max-width:767px) {
-  header > div {
-    width: 100%; box-sizing: border-box; padding: 9px 11px !important;
-    flex-direction: column; align-items: stretch !important; gap: 7px !important;
-  }
+  header > div { width: 100%; box-sizing: border-box; padding: 9px 11px !important; flex-direction: column; align-items: stretch !important; gap: 7px !important; }
   header > div > div:first-child { justify-content: flex-start; min-width: 0; width: 100%; }
   header > div > div:last-child { width: 100%; min-width: 0; justify-content: space-between; flex-wrap: nowrap; gap: 4px !important; }
   header > div > div:last-child > button, header > div > div:last-child > div { flex-shrink: 0; }
   header b { font-size: 0 !important; display: flex !important; align-items: center; gap: 0; letter-spacing: -.03em; }
   header b::before, header b::after { content: none !important; display: none !important; }
-  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; }
+  main { width: 100%; box-sizing: border-box; padding: 10px 10px 18px !important; gap: 10px !important; display: block !important; }
   main > div:first-child { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; width: 100%; overflow-x: auto !important; overflow-y: hidden; justify-content: flex-start !important; scrollbar-width: none; -ms-overflow-style: none; scroll-snap-type: x proximity; overscroll-behavior-x: contain; touch-action: pan-x; padding: 1px 1px 4px; }
   main > div:first-child::-webkit-scrollbar { display: none; }
   main > div:first-child button { flex: 0 0 auto !important; width: auto !important; min-width: 112px !important; white-space: nowrap; scroll-snap-align: start; padding-top: 9px !important; padding-bottom: 9px !important; box-shadow: 0 2px 8px rgba(23,21,42,.04); }
@@ -137,6 +116,26 @@ aside > div:first-child p::after { content: 'Your money. Your view.'; font-size:
   [id$="-modal-dialog"] { max-width: calc(100vw - 20px) !important; max-height: calc(100vh - 20px); overflow-y: auto; border-radius: 20px !important; }
   #expense-charts-card .recharts-wrapper > svg > text:first-of-type { font-size: clamp(14px,4.2vw,18px) !important; font-weight: 700 !important; }
   #expense-charts-card .recharts-wrapper > svg > text:nth-of-type(2) { font-size: 10px !important; }
+
+  /* Fix Settings on narrow screens: force a single vertical column. */
+  main > div.w-full.min-w-0.max-w-full.space-y-4.overflow-hidden,
+  main > div.w-full.min-w-0.max-w-full.space-y-4.sm\:space-y-5.overflow-hidden {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  main > div.w-full.min-w-0.max-w-full.space-y-4.overflow-hidden > *,
+  main > div.w-full.min-w-0.max-w-full.space-y-4.sm\:space-y-5.overflow-hidden > * {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  main > div.w-full.min-w-0.max-w-full.space-y-4.overflow-hidden section,
+  main > div.w-full.min-w-0.max-w-full.space-y-4.sm\:space-y-5.overflow-hidden section { margin-left: 0 !important; margin-right: 0 !important; }
 }
 
 @media (min-width:768px) { main { gap: 16px; } aside { border-right-color: #eceaf4 !important; } }
@@ -157,7 +156,6 @@ button:has(svg.lucide-receipt)::before { content: '▤'; font-size: 1.25rem; lin
 #root h1 + p { font-size: 0 !important; }
 #root h1 + p::after { content: 'Your money. Your view.'; font-size: .875rem; }
 
-/* Explicitly remove the brand from the mobile header; keep hamburger and controls. */
 @media (max-width:767px) {
   header > div > div:first-child > div:last-child { display: none !important; }
   header > div > div:first-child { width: auto !important; }
