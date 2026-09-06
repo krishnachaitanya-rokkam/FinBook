@@ -9,12 +9,27 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/families/$(familyId)) && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid;
     }
     function isValidFamilyJoin(familyId) {
-      let code = request.resource.data.get('acceptedInviteCode', '');
+      let code = request.resource.data.acceptedInviteCode;
       let invitePath = /databases/$(database)/documents/familyInvites/$(code);
-      return signedIn() && code != '' && exists(invitePath) && get(invitePath).data.familyId == familyId && get(invitePath).data.status == 'accepted' && get(invitePath).data.acceptedBy == request.auth.uid && get(invitePath).data.inviteeEmail == request.auth.token.email && request.auth.uid in request.resource.data.memberIds && !(request.auth.uid in resource.data.memberIds) && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'acceptedInviteCode']);
+      return signedIn()
+        && code is string
+        && code != ''
+        && exists(invitePath)
+        && get(invitePath).data.familyId == familyId
+        && get(invitePath).data.status == 'accepted'
+        && get(invitePath).data.acceptedBy == request.auth.uid
+        && get(invitePath).data.inviteeEmail == request.auth.token.email
+        && request.auth.uid in request.resource.data.memberIds
+        && !(request.auth.uid in resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'acceptedInviteCode']);
     }
     function isValidFamilyLeave(familyId) {
-      return isFamilyMember(familyId) && request.auth.uid in resource.data.memberIds && !(request.auth.uid in request.resource.data.memberIds) && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members']);
+      return isFamilyMember(familyId)
+        && request.auth.uid in resource.data.memberIds
+        && !(request.auth.uid in request.resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members']);
     }
     match /users/{userId}/{document=**} {
       allow read, write: if signedIn() && request.auth.uid == userId;
