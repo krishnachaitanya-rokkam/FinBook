@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Users, UserPlus, Copy, Check, ShieldCheck, LogOut } from 'lucide-react';
-import { collection, doc, getDoc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { Users, UserPlus, Copy, Check, ShieldCheck, LogOut, Trash2 } from 'lucide-react';
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { firebaseAuth, firestore } from '../services/firebase';
 import { subscribeToUserData } from '../services/firestoreData';
 import { subscribeToPortfolio } from '../services/portfolioService';
 
-interface FamilyPageProps { userName: string; email: string; }
+interface FamilyPageProps { userName: string; email: string; mode?: 'dashboard' | 'settings'; }
 type Role = 'owner' | 'member' | 'viewer';
 type FamilyMember = { name: string; email: string; role: Role; joinedAt: number };
 type FamilyDoc = { name: string; ownerId: string; memberIds: string[]; members: Record<string, FamilyMember>; createdAt: number; acceptedInviteCode?: string };
@@ -19,7 +19,7 @@ const makeId = (prefix:string) => `${prefix}-${Date.now()}-${Math.random().toStr
 const makeCode = () => Math.random().toString(36).slice(2,8).toUpperCase();
 const money = (value:number) => `₹${Math.round(value).toLocaleString('en-IN')}`;
 
-export function FamilyPage({userName,email}:FamilyPageProps){
+export function FamilyPage({userName,email,mode='settings'}:FamilyPageProps){
   const uid = firebaseAuth.currentUser?.uid || '';
   const [familyId,setFamilyId] = useState('');
   const [family,setFamily] = useState<FamilyDoc|null>(null);
@@ -53,13 +53,13 @@ export function FamilyPage({userName,email}:FamilyPageProps){
       const income=data.incomes.filter(i=>i.date.startsWith(key)).reduce((s,i)=>s+i.amount,0);
       const spending=data.expenses.filter(e=>e.date.startsWith(key)).reduce((s,e)=>s+e.amount,0);
       setPersonal(p=>({...p,income,spending}));
-      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,income,spending,savings:income-spending,netWorth:personal.netWorth,updatedAt:Date.now()},{merge:true});}
+      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,income,spending,savings:income-spending,updatedAt:Date.now()},{merge:true});}
     });
     stopPortfolio=subscribeToPortfolio(uid,data=>{
       const portfolioAssets=data.fields.reduce((s,f)=>s+(Number(f.amount)||0),0);
       const netWorth=(data.netWorthItems||[]).reduce((s,item)=>s+(item.kind==='liability'?-Number(item.amount):Number(item.amount)),0) || portfolioAssets;
       setPersonal(p=>({...p,netWorth}));
-      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,income:personal.income,spending:personal.spending,savings:personal.income-personal.spending,netWorth,updatedAt:Date.now()},{merge:true});}
+      if(familyId){void setDoc(doc(firestore,'families',familyId,'summaries',uid),{name:userName,email,netWorth,updatedAt:Date.now()},{merge:true});}
     });
     return ()=>{stopData();stopPortfolio();};
   },[uid,familyId,userName,email]);
@@ -127,6 +127,21 @@ export function FamilyPage({userName,email}:FamilyPageProps){
     }catch(error:any){setMessage(error?.message||'Could not leave family.');}finally{setBusy(false);}
   };
 
+  const deleteFamily=async()=>{
+    if(!familyId||!family||currentRole!=='owner'){setMessage('Only the family owner can delete the family.');return;}
+    const confirmed=confirm(`Delete ${family.name}? This removes the family dashboard and shared summaries. Your personal transactions, income and portfolio will not be deleted.`);
+    if(!confirmed)return;
+    setBusy(true);setMessage('');
+    try{
+      const summarySnap=await getDocs(summariesCollection(familyId));
+      await Promise.all(summarySnap.docs.map(d=>deleteDoc(d.ref)));
+      await deleteDoc(familyDoc(familyId));
+      await setDoc(familyLinkDoc(uid),{familyId:'',role:'',updatedAt:Date.now()});
+      setFamilyId('');setFamily(null);setSummaries([]);setInviteCode('');
+      setMessage('Family deleted. Your personal financial data is unchanged.');
+    }catch(error:any){setMessage(error?.message||'Could not delete family.');}finally{setBusy(false);}
+  };
+
   const copyCode=async()=>{if(!inviteCode)return;try{await navigator.clipboard.writeText(inviteCode);setCopied(true);window.setTimeout(()=>setCopied(false),1800);}catch{setMessage(`Invite code: ${inviteCode}`);}};
 
   if(!familyId){
@@ -146,6 +161,7 @@ export function FamilyPage({userName,email}:FamilyPageProps){
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5"><div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Family income</p><p className="text-lg font-bold mt-1">{money(familyTotals.income)}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Family spending</p><p className="text-lg font-bold mt-1">{money(familyTotals.spending)}</p></div><div className="rounded-xl bg-emerald-50 p-3"><p className="text-xs text-emerald-700">Family savings</p><p className="text-lg font-bold mt-1 text-emerald-700">{money(familyTotals.savings)}</p></div><div className="rounded-xl bg-indigo-50 p-3"><p className="text-xs text-indigo-700">Combined net worth</p><p className="text-lg font-bold mt-1 text-indigo-700">{money(familyTotals.netWorth)}</p></div></div>
     <div className="mt-5"><p className="text-sm font-bold">Family members</p><div className="mt-2 space-y-2">{family&&Object.entries(family.members||{}).map(([id,member])=><div key={id} className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"><div className="flex items-center gap-3 min-w-0"><div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold shrink-0">{member.name?.charAt(0)?.toUpperCase()||'?'}</div><div className="min-w-0"><p className="text-sm font-semibold truncate">{member.name}{id===uid?' (You)':''}</p><p className="text-xs text-slate-500 truncate">{member.email}</p></div></div><span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold capitalize">{member.role}</span></div>)}</div></div>
     {currentRole==='owner'&&<div className="mt-5 rounded-xl border bg-slate-50 p-4"><div className="flex items-start gap-3"><UserPlus className="h-5 w-5 text-indigo-600 mt-0.5"/><div className="min-w-0 flex-1"><p className="font-semibold text-sm">Invite a family member</p><p className="text-xs text-slate-500 mt-1">Invite codes are tied to the member's email and expire in 7 days.</p><div className="flex flex-col sm:flex-row gap-2 mt-3"><input value={inviteEmail} onChange={e=>setInviteEmail(e.target.value)} type="email" className="flex-1 min-w-0 rounded-lg border bg-white px-3 py-2.5 text-sm" placeholder="partner@email.com"/><button disabled={busy} onClick={()=>void invite()} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-900 text-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"><UserPlus className="h-4 w-4"/>Generate invite</button></div>{inviteCode&&<div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 rounded-lg bg-white border p-3"><div className="flex-1"><p className="text-[11px] uppercase tracking-wide text-slate-400">Invite code</p><p className="font-bold tracking-[0.25em] text-lg">{inviteCode}</p></div><button onClick={()=>void copyCode()} className="inline-flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold">{copied?<><Check className="h-4 w-4"/>Copied</>:<><Copy className="h-4 w-4"/>Copy code</>}</button></div>}</div></div></div>}
+    {currentRole==='owner'&&mode==='settings'&&<div className="mt-5 rounded-xl border border-rose-200 bg-rose-50/60 p-4"><div className="flex items-start gap-3"><Trash2 className="h-5 w-5 text-rose-600 mt-0.5"/><div className="min-w-0 flex-1"><p className="font-semibold text-sm text-rose-800">Family settings</p><p className="text-xs text-rose-700 mt-1">Delete the family and its shared summaries. Your personal transactions, income and portfolio are not deleted.</p><button disabled={busy} onClick={()=>void deleteFamily()} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm font-semibold text-rose-700 disabled:opacity-50"><Trash2 className="h-4 w-4"/>{busy?'Deleting…':'Delete family'}</button></div></div></div>}
     <div className="mt-5 flex items-start gap-2 rounded-xl bg-emerald-50 border border-emerald-100 p-3 text-xs text-emerald-800"><ShieldCheck className="h-4 w-4 mt-0.5 shrink-0"/><span>Only shared monthly totals are visible to family members. Individual transactions, income entries and portfolio details remain private.</span></div>
     {message&&<p className="mt-3 text-xs text-slate-600">{message}</p>}
   </section>;
