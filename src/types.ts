@@ -1,5 +1,7 @@
 export type PaymentMethod = 'upi' | 'credit_card' | 'debit_card' | 'cash' | 'bank_transfer' | 'digital_wallet';
 
+export type InvestmentType = 'ppf' | 'mutual_funds' | 'stocks' | 'epf' | 'nps' | 'fixed_deposits' | 'gold' | 'other_investment';
+
 export type CategoryId = 
   | 'housing'
   | 'groceries'
@@ -27,6 +29,7 @@ export interface Expense {
   title: string;
   amount: number;
   categoryId: CategoryId;
+  investmentType?: InvestmentType;
   date: string;
   paymentMethod: PaymentMethod;
   notes?: string;
