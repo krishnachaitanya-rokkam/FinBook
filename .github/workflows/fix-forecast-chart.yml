@@ -1,0 +1,38 @@
+name: Fix forecast chart
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch forecast chart
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          old = '''  const forecastMax = Math.max(netWorth, ...forecast.points.map(point => point.value), 1);\n  const chartPoints = forecast.points.map((point, index) => `${35 + index * 120},${175 - (point.value / forecastMax) * 135}`).join(' ');\n  const conservative = useMemo(() => { const monthlyRate = Math.pow(1.08, 1 / 12) - 1; let investments = portfolioTotal; for (let i = 0; i < 60; i += 1) investments = investments * (1 + monthlyRate) + effectiveMonthlyContribution; return netWorth - portfolioTotal + investments; }, [netWorth, portfolioTotal, effectiveMonthlyContribution]);\n  const optimistic = useMemo(() => { const monthlyRate = Math.pow(1.12, 1 / 12) - 1; let investments = portfolioTotal; for (let i = 0; i < 60; i += 1) investments = investments * (1 + monthlyRate) + effectiveMonthlyContribution; return netWorth - portfolioTotal + investments; }, [netWorth, portfolioTotal, effectiveMonthlyContribution]);'''
+          new = '''  const buildScenarioPoints = (rate: number) => {\n    const otherNetWorth = netWorth - portfolioTotal;\n    const monthlyRate = Math.pow(1 + rate / 100, 1 / 12) - 1;\n    const build = (months: number) => {\n      let investments = portfolioTotal;\n      for (let i = 0; i < months; i += 1) investments = investments * (1 + monthlyRate) + effectiveMonthlyContribution;\n      return otherNetWorth + investments;\n    };\n    return [0, 3, 6, 12, 36, 60].map(months => ({ months, value: build(months) }));\n  };\n  const conservativePoints = buildScenarioPoints(8);\n  const expectedPoints = forecast.points;\n  const optimisticPoints = buildScenarioPoints(12);\n  const forecastMax = Math.max(netWorth, ...conservativePoints.map(point => point.value), ...expectedPoints.map(point => point.value), ...optimisticPoints.map(point => point.value), 1);\n  const toChartPoints = (points: { months: number; value: number }[]) => points.map((point, index) => `${35 + index * 120},${175 - (point.value / forecastMax) * 135}`).join(' ');\n  const conservativeChartPoints = toChartPoints(conservativePoints);\n  const expectedChartPoints = toChartPoints(expectedPoints);\n  const optimisticChartPoints = toChartPoints(optimisticPoints);\n  const conservative = conservativePoints[5].value;\n  const optimistic = optimisticPoints[5].value;'''
+          if old not in s:
+              raise SystemExit('forecast calculation block not found')
+          s = s.replace(old, new, 1)
+          old_poly = '<polyline points={chartPoints} fill="none" stroke="#4f46e5" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="35" cy={175 - (netWorth / forecastMax) * 135} r="5" fill="#4f46e5"/>'
+          new_poly = '<polyline points={conservativeChartPoints} fill="none" stroke="#f43f5e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><polyline points={optimisticChartPoints} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" opacity="0.9"/><polyline points={expectedChartPoints} fill="none" stroke="#4f46e5" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/><circle cx="35" cy={175 - (netWorth / forecastMax) * 135} r="5" fill="#4f46e5"/>'
+          if old_poly not in s:
+              raise SystemExit('forecast polyline not found')
+          s = s.replace(old_poly, new_poly, 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManagerCore.tsx
+          git commit -m "Fix forecast chart scenarios" || exit 0
+          git push
