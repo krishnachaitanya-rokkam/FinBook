@@ -19,26 +19,10 @@ jobs:
           path = Path('src/components/PortfolioManagerCore.tsx')
           text = path.read_text()
 
-          old = "[0, 3, 6, 12, 36, 60].map(months =>"
-          new = "Array.from({ length: 5 }, (_, index) => Math.round(forecastPeriod * 12 * index / 4)).map(months =>"
-          count = text.count(old)
-          if count < 2:
-              raise SystemExit(f'Expected at least 2 forecast point arrays, found {count}')
-          text = text.replace(old, new)
-
-          old_x = "35 + index * 120"
-          new_x = "35 + index * 175"
-          if old_x in text:
-              text = text.replace(old_x, new_x)
-
           text = text.replace("conservativePoints[5].value", "conservativePoints[conservativePoints.length - 1].value")
           text = text.replace("optimisticPoints[5].value", "optimisticPoints[optimisticPoints.length - 1].value")
 
-          # If the chart uses the old fixed x-axis labels, make them derive from the selected period.
-          text = text.replace("['Now', '3m', '6m', '1y', '3y', '5y']", "['Now', ...[1, 2, 3, 4].map(index => `${Math.round(forecastPeriod * index / 4)}y`)]")
-
           path.write_text(text)
-          print('Patched forecast point arrays:', count)
           PY
 
       - name: Commit patch
