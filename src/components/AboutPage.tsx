@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, CircleDollarSign, CircleTarget, Info, LayoutGrid, PieChart, ShieldCheck, WalletCards, BarChart3, UserRound } from 'lucide-react';
+import { CalendarDays, Info, LayoutGrid, PieChart, ShieldCheck, WalletCards, BarChart3, UserRound, Target } from 'lucide-react';
 
 export const AboutPage: React.FC = () => {
   const iconSrc = `${import.meta.env.BASE_URL}ahviq-icon.svg`;
@@ -9,7 +9,7 @@ export const AboutPage: React.FC = () => {
     { icon: PieChart, title: 'Plan Budgets', description: 'Set limits and stay on track', tone: 'bg-violet-50 text-violet-600' },
     { icon: BarChart3, title: 'Grow Wealth', description: 'Monitor investments and net worth', tone: 'bg-blue-50 text-blue-600' },
     { icon: CalendarDays, title: 'Stay Organized', description: 'Manage recurring transactions', tone: 'bg-orange-50 text-orange-500' },
-    { icon: CircleTarget, title: 'Achieve Goals', description: 'Plan and track your financial goals', tone: 'bg-pink-50 text-pink-500' },
+    { icon: Target, title: 'Achieve Goals', description: 'Plan and track your financial goals', tone: 'bg-pink-50 text-pink-500' },
   ];
 
   return (
@@ -37,7 +37,7 @@ export const AboutPage: React.FC = () => {
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-3 sm:px-3.5">
             <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-violet-50 p-1.5 text-violet-600"><CircleTarget className="h-4 w-4" /></span>
+              <span className="rounded-lg bg-violet-50 p-1.5 text-violet-600"><Target className="h-4 w-4" /></span>
               <div className="min-w-0"><p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Focus</p><p className="text-xs font-semibold leading-4 text-slate-800 sm:text-sm">Money, budgets & wealth</p></div>
             </div>
           </div>
