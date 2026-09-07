@@ -1,0 +1,40 @@
+name: Fix duplicate income sections
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep only the final income section
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/FinBookApp.tsx')
+          s = path.read_text()
+
+          pattern = r'(?P<section>          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">\n            <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">Income Received</h3>.*?          </section>)'
+          matches = list(re.finditer(pattern, s, re.S))
+          if len(matches) < 2:
+              raise SystemExit(f'Expected duplicate income sections, found {len(matches)}')
+
+          # Keep the last section, which contains the Edit/Delete controls.
+          first = matches[0].start()
+          last_end = matches[-1].end()
+          replacement = matches[-1].group('section')
+          s = s[:first] + replacement + s[last_end:]
+          path.write_text(s)
+      - name: Commit fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/FinBookApp.tsx
+          git diff --cached --quiet || git commit -m 'Remove duplicate income sections'
+          git push
