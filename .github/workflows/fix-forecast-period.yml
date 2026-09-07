@@ -15,7 +15,6 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('src/components/PortfolioManagerCore.tsx')
           text = path.read_text()
@@ -29,9 +28,11 @@ jobs:
 
           old_x = "35 + index * 120"
           new_x = "35 + index * 175"
-          if old_x not in text:
-              raise SystemExit('Expected fixed chart x spacing not found')
-          text = text.replace(old_x, new_x)
+          if old_x in text:
+              text = text.replace(old_x, new_x)
+
+          text = text.replace("conservativePoints[5].value", "conservativePoints[conservativePoints.length - 1].value")
+          text = text.replace("optimisticPoints[5].value", "optimisticPoints[optimisticPoints.length - 1].value")
 
           # If the chart uses the old fixed x-axis labels, make them derive from the selected period.
           text = text.replace("['Now', '3m', '6m', '1y', '3y', '5y']", "['Now', ...[1, 2, 3, 4].map(index => `${Math.round(forecastPeriod * index / 4)}y`)]")
