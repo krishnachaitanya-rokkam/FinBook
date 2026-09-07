@@ -1,0 +1,50 @@
+name: Fix forecast period chart
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch forecast chart to selected period
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('src/components/PortfolioManagerCore.tsx')
+          text = path.read_text()
+
+          old = "[0, 3, 6, 12, 36, 60].map(months =>"
+          new = "Array.from({ length: 5 }, (_, index) => Math.round(forecastPeriod * 12 * index / 4)).map(months =>"
+          count = text.count(old)
+          if count < 2:
+              raise SystemExit(f'Expected at least 2 forecast point arrays, found {count}')
+          text = text.replace(old, new)
+
+          old_x = "35 + index * 120"
+          new_x = "35 + index * 175"
+          if old_x not in text:
+              raise SystemExit('Expected fixed chart x spacing not found')
+          text = text.replace(old_x, new_x)
+
+          # If the chart uses the old fixed x-axis labels, make them derive from the selected period.
+          text = text.replace("['Now', '3m', '6m', '1y', '3y', '5y']", "['Now', ...[1, 2, 3, 4].map(index => `${Math.round(forecastPeriod * index / 4)}y`)]")
+
+          path.write_text(text)
+          print('Patched forecast point arrays:', count)
+          PY
+
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManagerCore.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "Fix forecast chart selected period"
+          git push
