@@ -1,9 +1,0 @@
-name: Cleanup final
-on:
-  push:
-    paths: ['.github/workflows/cleanup-final.yml']
-jobs:
-  noop:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo done
