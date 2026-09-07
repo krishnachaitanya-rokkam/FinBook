@@ -1,0 +1,33 @@
+name: Fix forecast Y axis
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch chart Y axis
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          old = '<line x1="35" y1="175" x2="735" y2="175" stroke="#cbd5e1"/><line x1="35" y1="40" x2="735" y2="40" stroke="#e2e8f0"/><line x1="35" y1="107" x2="735" y2="107" stroke="#e2e8f0"/>'
+          new = '<line x1="35" y1="175" x2="735" y2="175" stroke="#cbd5e1"/><line x1="35" y1="40" x2="735" y2="40" stroke="#e2e8f0"/><line x1="35" y1="107" x2="735" y2="107" stroke="#e2e8f0"/><text x="4" y="44" fontSize="10" fill="#64748b">{formatCurrency(forecastMax)}</text><text x="4" y="111" fontSize="10" fill="#64748b">{formatCurrency(forecastMax / 2)}</text><text x="4" y="178" fontSize="10" fill="#64748b">₹0</text>'
+          if old not in s:
+              raise SystemExit('chart grid block not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManagerCore.tsx
+          git commit -m "Add forecast chart Y axis labels" || exit 0
+          git push
