@@ -1,0 +1,75 @@
+name: Apply income UI fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/apply-income-ui-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch income overview
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          path = Path('src/FinBookApp.tsx')
+          s = path.read_text()
+
+          s = s.replace(
+              'Calendar, CalendarRange, WalletCards, Menu, PanelLeftClose, PanelLeftOpen, Settings, ArrowDownLeft, Repeat, Users, Info }',
+              'Calendar, CalendarRange, WalletCards, Menu, PanelLeftClose, PanelLeftOpen, Settings, ArrowDownLeft, Repeat, Users, Info, Pencil, Trash2 }',
+              1,
+          )
+          s = s.replace(
+              'subscribeToUserData, removeExpense, saveBudget, saveExpense, saveIncome, clearUserData',
+              'subscribeToUserData, removeExpense, removeIncome, saveBudget, saveExpense, saveIncome, clearUserData',
+              1,
+          )
+          s = s.replace(
+              'const [modal,setModal]=useState(false); const [incomeModal,setIncomeModal]=useState(false); const [budgetModal,setBudgetModal]=useState(false); const [editing,setEditing]=useState<Expense|null>(null);',
+              'const [modal,setModal]=useState(false); const [incomeModal,setIncomeModal]=useState(false); const [budgetModal,setBudgetModal]=useState(false); const [editing,setEditing]=useState<Expense|null>(null); const [editingIncome,setEditingIncome]=useState<Income|null>(null);',
+              1,
+          )
+
+          marker = '  const saveB=async(b:MonthBudgetConfig)=>'
+          if marker not in s:
+              raise SystemExit('saveB marker not found')
+          income_delete = "  const removeIncomeRecord=async(id:string)=>{if(!user)return;const previous=incomes;setIncomes(prev=>prev.filter(i=>i.id!==id));try{await removeIncome(user.id,id);toast('Income deleted from cloud');}catch(error:any){setIncomes(previous);toast(`Could not delete income: ${error?.message||'Please try again'}`);}};\n"
+          s = s.replace(marker, income_delete + marker, 1)
+
+          pattern = r'          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">\n            <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">Income Received</h3>.*?          </section>'
+          matches = list(re.finditer(pattern, s, re.S))
+          if len(matches) < 1:
+              raise SystemExit(f'income section not found; matches={len(matches)}')
+          first = matches[0].group(0)
+          # Remove the repeated Income Received cards. Keep one canonical card.
+          start, end = matches[0].start(), matches[-1].end()
+          s = s[:start] + first + s[end:]
+
+          old_actions = '<div className="shrink-0 text-right"><p className="text-sm font-bold text-emerald-700">₹{income.amount.toLocaleString(\'en-IN\',{minimumFractionDigits:2,maximumFractionDigits:2})}</p></div>'
+          new_actions = '<div className="shrink-0 flex items-center gap-2"><div className="text-right"><p className="text-sm font-bold text-emerald-700">₹{income.amount.toLocaleString(\'en-IN\',{minimumFractionDigits:2,maximumFractionDigits:2})}</p></div><button type="button" onClick={()=>{setEditingIncome(income);setIncomeModal(true)}} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-100" aria-label={`Edit ${income.title}`} title="Edit income"><Pencil className="h-4 w-4"/></button><button type="button" onClick={()=>{if(confirm(`Delete ${income.title}?`))removeIncomeRecord(income.id)}} className="rounded-lg border border-rose-200 bg-white p-2 text-rose-600 hover:bg-rose-50" aria-label={`Delete ${income.title}`} title="Delete income"><Trash2 className="h-4 w-4"/></button></div>'
+          if old_actions not in s:
+              raise SystemExit('income action markup not found')
+          s = s.replace(old_actions, new_actions, 1)
+
+          old_modal = '<IncomeModal isOpen={incomeModal} onClose={()=>setIncomeModal(false)} onSave={saveI} defaultDate='
+          new_modal = '<IncomeModal isOpen={incomeModal} onClose={()=>{setIncomeModal(false);setEditingIncome(null)}} onSave={saveI} editingIncome={editingIncome} defaultDate='
+          if old_modal not in s:
+              raise SystemExit('IncomeModal usage not found')
+          s = s.replace(old_modal, new_modal, 1)
+
+          path.write_text(s)
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/FinBookApp.tsx
+          git diff --cached --quiet || git commit -m 'Fix duplicate income overview and add income actions'
+          git push
