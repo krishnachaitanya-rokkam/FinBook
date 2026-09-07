@@ -11,11 +11,13 @@ export const MetricCards: React.FC<MetricCardsProps> = ({totalIncome,totalSpent,
   const savingsRate = totalIncome > 0 ? Math.round((remaining/totalIncome)*100) : 0;
   const avgTransaction = transactionCount > 0 ? totalSpent/transactionCount : 0;
   const budgetHeadroom = totalBudget > 0 ? Math.max(0,100-utilization) : 0;
-  const healthScore = totalIncome <= 0 ? 0 : Math.max(0,Math.min(100, Math.round(
-    (savingsRate >= 20 ? 40 : savingsRate > 0 ? 25 : 5) +
-    (totalBudget <= 0 ? 10 : utilization <= 70 ? 35 : utilization <= 90 ? 25 : utilization <= 100 ? 15 : 0) +
-    (remaining >= 0 ? 25 : 0)
-  )));
+
+  // Financial health is intentionally granular rather than threshold-based:
+  // 50% savings/cash retention, 30% budget discipline, 20% positive cash flow.
+  const savingsScore = totalIncome > 0 ? Math.max(0, Math.min(50, (savingsRate / 30) * 50)) : 0;
+  const budgetScore = totalBudget <= 0 ? 0 : utilization <= 70 ? 30 : utilization <= 100 ? 30 - ((utilization - 70) / 30) * 20 : 0;
+  const cashFlowScore = remaining > 0 ? 20 : remaining === 0 ? 10 : 0;
+  const healthScore = totalIncome <= 0 ? 0 : Math.max(0, Math.min(100, Math.round(savingsScore + budgetScore + cashFlowScore)));
   const healthLabel = healthScore >= 80 ? 'Strong' : healthScore >= 60 ? 'Healthy' : healthScore >= 40 ? 'Watch' : 'Needs attention';
   const cards = [
     {id:'metric-total-income',label:'Income',value:formatCurrency(totalIncome),meta:'Received in cycle',badge:totalIncome>0?'On track':'Add income',icon:IndianRupee,iconClass:'bg-emerald-50 text-emerald-600 border-emerald-100'},
@@ -24,7 +26,7 @@ export const MetricCards: React.FC<MetricCardsProps> = ({totalIncome,totalSpent,
     {id:'metric-available',label:'Available',value:formatCurrency(remaining),meta:'Income less expenses',badge:remaining>=0?'Positive cash flow':'Negative cash flow',icon:PiggyBank,iconClass:remaining>=0?'bg-violet-50 text-violet-600 border-violet-100':'bg-rose-50 text-rose-600 border-rose-100',valueClass:remaining<0?'text-rose-600':'text-slate-900'}
   ];
   const insights = [
-    {id:'metric-health-score',label:'Financial Health',value:`${healthScore}/100`,meta:'Based on cash flow & budget',badge:healthLabel,icon:HeartPulse,iconClass:healthScore>=70?'bg-emerald-50 text-emerald-600 border-emerald-100':healthScore>=40?'bg-amber-50 text-amber-600 border-amber-100':'bg-rose-50 text-rose-600 border-rose-100',valueClass:healthScore>=70?'text-emerald-700':healthScore>=40?'text-amber-700':'text-rose-700'},
+    {id:'metric-health-score',label:'Financial Health',value:`${healthScore}/100`,meta:'Based on savings, budget & cash flow',badge:healthLabel,icon:HeartPulse,iconClass:healthScore>=70?'bg-emerald-50 text-emerald-600 border-emerald-100':healthScore>=40?'bg-amber-50 text-amber-600 border-amber-100':'bg-rose-50 text-rose-600 border-rose-100',valueClass:healthScore>=70?'text-emerald-700':healthScore>=40?'text-amber-700':'text-rose-700'},
     {id:'metric-savings-rate',label:'Savings Rate',value:`${savingsRate}%`,meta:'Income retained after expenses',badge:savingsRate>=20?'Great':'Improve savings',icon:Percent,iconClass:'bg-violet-50 text-violet-600 border-violet-100'},
     {id:'metric-budget-headroom',label:'Budget Headroom',value:totalBudget>0?`${budgetHeadroom}%`:'—',meta:'Unused spending capacity',badge:totalBudget>0?(budgetHeadroom>=20?'Comfortable':'Tight'):'Set a budget',icon:Gauge,iconClass:'bg-sky-50 text-sky-600 border-sky-100'},
     {id:'metric-average-transaction',label:'Avg. Transaction',value:formatCurrency(avgTransaction),meta:'Average expense size',badge:transactionCount>0?'This cycle':'No transactions',icon:Calculator,iconClass:'bg-slate-100 text-slate-600 border-slate-200'}
