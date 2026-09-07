@@ -1,0 +1,9 @@
+name: Stop cleanup workflows
+on:
+  push:
+    paths: ['.github/workflows/stop-cleanup.yml']
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo cleanup complete
