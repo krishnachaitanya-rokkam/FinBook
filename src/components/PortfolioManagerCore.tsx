@@ -55,7 +55,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
       for (let i = 0; i < months; i += 1) investments = investments * (1 + monthlyRate) + effectiveMonthlyContribution;
       return otherNetWorth + investments;
     };
-    const points = [0, 3, 6, 12, 36, 60].map(months => ({ months, value: build(months) }));
+    const points = Array.from({ length: 5 }, (_, index) => Math.round(forecastPeriod * 12 * index / 4)).map(months => ({ months, value: build(months) }));
     return { otherNetWorth, points, year1: build(12), year3: build(36), year5: build(60), target: build(forecastPeriod * 12) };
   }, [netWorth, portfolioTotal, forecastRate, effectiveMonthlyContribution, forecastPeriod]);
   const buildScenarioPoints = (rate: number) => {
@@ -66,13 +66,13 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
       for (let i = 0; i < months; i += 1) investments = investments * (1 + monthlyRate) + effectiveMonthlyContribution;
       return otherNetWorth + investments;
     };
-    return [0, 3, 6, 12, 36, 60].map(months => ({ months, value: build(months) }));
+    return Array.from({ length: 5 }, (_, index) => Math.round(forecastPeriod * 12 * index / 4)).map(months => ({ months, value: build(months) }));
   };
   const conservativePoints = buildScenarioPoints(8);
   const expectedPoints = forecast.points;
   const optimisticPoints = buildScenarioPoints(12);
   const forecastMax = Math.max(netWorth, ...conservativePoints.map(point => point.value), ...expectedPoints.map(point => point.value), ...optimisticPoints.map(point => point.value), 1);
-  const toChartPoints = (points: { months: number; value: number }[]) => points.map((point, index) => `${35 + index * 120},${175 - (point.value / forecastMax) * 135}`).join(' ');
+  const toChartPoints = (points: { months: number; value: number }[]) => points.map((point, index) => `${35 + index * 175},${175 - (point.value / forecastMax) * 135}`).join(' ');
   const conservativeChartPoints = toChartPoints(conservativePoints);
   const expectedChartPoints = toChartPoints(expectedPoints);
   const optimisticChartPoints = toChartPoints(optimisticPoints);
