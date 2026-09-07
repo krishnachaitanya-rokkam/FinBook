@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -22,30 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Remove duplicate income sections
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
-          p = Path('src/FinBookApp.tsx')
-          s = p.read_text()
-          pattern = r'          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">\n            <div className="flex items-center justify-between gap-3"><div><h3 className="text-lg font-bold text-slate-900">Income Received</h3>.*?          </section>'
-          matches = list(re.finditer(pattern, s, re.S))
-          print(f'Income sections found: {len(matches)}')
-          if len(matches) > 1:
-              s = s[:matches[0].start()] + matches[-1].group(0) + s[matches[-1].end():]
-              p.write_text(s)
-              print('Removed duplicate income sections')
-
-          # Persist the cleanup. GITHUB_TOKEN pushes do not recursively trigger workflows.
-          import subprocess
-          subprocess.run(['git','config','user.name','github-actions[bot]'], check=True)
-          subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'], check=True)
-          subprocess.run(['git','add','src/FinBookApp.tsx'], check=True)
-          if subprocess.run(['git','diff','--cached','--quiet']).returncode != 0:
-              subprocess.run(['git','commit','-m','Remove duplicate income sections'], check=True)
-              subprocess.run(['git','push'], check=True)
 
       - name: Setup Node
         uses: actions/setup-node@v4
