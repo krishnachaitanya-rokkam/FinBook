@@ -1,9 +1,0 @@
-name: Poke
-on:
-  push:
-    branches: [main]
-jobs:
-  poke:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo poke
