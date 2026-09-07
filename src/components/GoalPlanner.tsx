@@ -42,14 +42,14 @@ export const GoalPlanner: React.FC<GoalPlannerProps> = ({ goals }) => {
 
   if (!goals.length) {
     return <section className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-cyan-50/60 p-4 sm:p-5 shadow-sm">
-      <div className="flex items-start gap-3"><div className="rounded-xl bg-indigo-100 p-2"><Target className="h-5 w-5 text-indigo-600" /></div><div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Phase 3 · Goal planning</p><h4 className="mt-1 text-lg font-bold text-slate-900">Turn goals into a plan</h4><p className="mt-1 text-sm text-slate-500">Add a financial goal above to see the monthly amount needed, projected progress and whether you are on track.</p></div></div>
+      <div className="flex items-start gap-3"><div className="rounded-xl bg-indigo-100 p-2"><Target className="h-5 w-5 text-indigo-600" /></div><div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Phase 3 · Goal Planning</p><h4 className="mt-1 text-lg font-bold text-slate-900">Turn goals into a plan</h4><p className="mt-1 text-sm text-slate-500">Add a financial goal above to see the monthly amount needed, projected progress and whether you are on track.</p></div></div>
     </section>;
   }
 
   return <section className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-cyan-50/60 p-4 sm:p-5 shadow-sm">
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-3">
-        <div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Phase 3 · Goal planning</p><h4 className="mt-1 text-lg font-bold text-slate-900">Goal Planner</h4><p className="mt-1 text-xs sm:text-sm text-slate-500">See how much each goal needs and whether your current contribution is likely to get you there.</p></div>
+        <div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Phase 3 · Goal Planning</p><h4 className="mt-1 text-lg font-bold text-slate-900">Goal Planner</h4><p className="mt-1 text-xs sm:text-sm text-slate-500">See how much each goal needs and whether your current contribution is likely to get you there.</p></div>
         <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-indigo-600 border border-indigo-100">PLANNING</span>
       </div>
 
