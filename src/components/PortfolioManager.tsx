@@ -24,13 +24,14 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
 
   useEffect(() => {
     const check = () => {
-      const text = document.body.innerText;
-      setForecastVisible(text.includes('Net Worth Forecast'));
-      setGoalsVisible(text.includes('Goals') && text.includes('Financial goals'));
+      const activeButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Goals' && button.className.includes('bg-slate-900'));
+      const activeForecast = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Forecast' && button.className.includes('bg-slate-900'));
+      setGoalsVisible(Boolean(activeButton));
+      setForecastVisible(Boolean(activeForecast));
     };
     check();
     const observer = new MutationObserver(check);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
 
