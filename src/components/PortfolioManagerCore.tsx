@@ -76,8 +76,8 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const conservativeChartPoints = toChartPoints(conservativePoints);
   const expectedChartPoints = toChartPoints(expectedPoints);
   const optimisticChartPoints = toChartPoints(optimisticPoints);
-  const conservative = conservativePoints[5].value;
-  const optimistic = optimisticPoints[5].value;
+  const conservative = conservativePoints[conservativePoints.length - 1].value;
+  const optimistic = optimisticPoints[optimisticPoints.length - 1].value;
 
   return <section className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden">
     <div className="w-full min-w-0 rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 p-4 sm:p-6 shadow-sm"><div className="flex min-w-0 flex-col lg:flex-row lg:items-center lg:justify-between gap-4"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Wealth</p><h2 className="mt-1 text-xl font-bold text-slate-900 break-words">Your financial picture</h2><p className="mt-1 max-w-2xl text-sm text-slate-500 break-words">Track investments, net worth and the goals you are building toward.</p></div><div className="w-full min-w-0 max-w-full overflow-x-auto rounded-2xl bg-white/80 p-1 border border-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"><div className="flex w-max min-w-full flex-nowrap gap-1"><TabButton active={tab === 'portfolio'} onClick={() => setTab('portfolio')} icon={WalletCards}>Portfolio</TabButton><TabButton active={tab === 'networth'} onClick={() => setTab('networth')} icon={TrendingUp}>Net Worth</TabButton><TabButton active={tab === 'forecast'} onClick={() => setTab('forecast')} icon={TrendingUp}>Forecast</TabButton><TabButton active={tab === 'goals'} onClick={() => setTab('goals')} icon={Target}>Goals</TabButton></div></div></div></div>
