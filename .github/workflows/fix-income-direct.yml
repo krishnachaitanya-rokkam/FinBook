@@ -1,0 +1,39 @@
+name: Fix income sections
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-income-direct.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/FinBookApp.tsx'); s=p.read_text()
+          marker='          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">'
+          starts=[m.start() for m in re.finditer(re.escape(marker),s)]
+          # The income cards are contiguous and all begin with Income Received. Keep only the last one.
+          blocks=[]
+          for pos in starts:
+              if s[pos:pos+500].find('>Income Received</h3>')>=0: blocks.append(pos)
+          print('income blocks',len(blocks))
+          if len(blocks)>1:
+              end=blocks[-1]
+              # remove every earlier matching section by walking from first to last and keeping last
+              first=blocks[0]
+              s=s[:first]+s[end:]
+              p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/FinBookApp.tsx
+          git diff --cached --quiet || git commit -m 'Remove duplicate income sections'
+          git push
