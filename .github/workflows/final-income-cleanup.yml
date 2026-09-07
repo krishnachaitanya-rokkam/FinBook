@@ -1,0 +1,38 @@
+name: Final income cleanup
+on:
+  push:
+    paths:
+      - '.github/workflows/final-income-cleanup.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep one income section
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('src/FinBookApp.tsx'); s=p.read_text()
+          marker='          <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">'
+          starts=[m.start() for m in re.finditer(re.escape(marker),s)]
+          income=[]
+          for pos in starts:
+              segment=s[pos:pos+1200]
+              if 'Income Received' in segment: income.append(pos)
+          print('income sections',len(income))
+          if len(income)>1:
+              # find matching section boundaries using the next marker; preserve final section
+              first=income[0]; keep=income[-1]
+              s=s[:first]+s[keep:]
+              p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/FinBookApp.tsx
+          git diff --cached --quiet || git commit -m 'Remove duplicate income sections'
+          git push
