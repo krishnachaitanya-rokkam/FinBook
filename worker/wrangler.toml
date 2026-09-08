@@ -1,0 +1,18 @@
+name = "ahviq-ai"
+main = "src/index.js"
+compatibility_date = "2026-09-08"
+
+[vars]
+FIREBASE_PROJECT_ID = "expense-tracker-8745f"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ahviq-ai"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[observability]
+enabled = true
+
+[limits]
+cpu_ms = 10
+subrequests = 10
