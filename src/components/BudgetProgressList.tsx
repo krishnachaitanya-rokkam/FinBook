@@ -22,30 +22,33 @@ export const BudgetProgressList: React.FC<BudgetProgressListProps> = ({
       <div className="pb-3.5 border-b border-slate-100">
         <div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight font-display">
-            Category Budget Limits & Progress
+            Budget by category
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Spending progress relative to monthly caps
+            See what you’ve spent, what’s left, and where you’re close to the limit
           </p>
         </div>
       </div>
 
       <div className="mt-4 space-y-2.5">
         {alerts.length === 0 ? (
-          <div className="py-6 px-4 text-center rounded-lg border border-dashed border-slate-200 bg-slate-50/50">
-            <p className="text-xs font-semibold text-slate-700">
-              Default budget values are set to ₹0
+          <div className="py-7 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-slate-50/60">
+            <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-400">
+              <SlidersHorizontal className="h-4 w-4" />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700">
+              Your budget isn’t set up yet
             </p>
             <p className="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
-              Category spending progress bars will appear here once you assign monthly budget limits.
+              Add limits for categories like food, travel and shopping to see your spending room at a glance.
             </p>
             <button
               type="button"
               onClick={onOpenBudgetModal}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800 transition cursor-pointer"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800 transition cursor-pointer"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>Set Category Budgets</span>
+              <span>Set my budgets</span>
             </button>
           </div>
         ) : (
