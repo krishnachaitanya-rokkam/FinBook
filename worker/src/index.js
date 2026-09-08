@@ -1,6 +1,6 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
-const MODEL = 'gemini-2.5-flash-lite';
+const MODEL = 'gemini-3.1-flash-lite';
 const MONTHLY_LIMIT = 100;
 const FIREBASE_PROJECT_ID = 'expense-tracker-8745f';
 const FIREBASE_ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
