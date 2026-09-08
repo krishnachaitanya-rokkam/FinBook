@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, Send, Sparkles, Lightbulb, RefreshCw, Zap } from 'lucide-react';
-import { firebaseAuth } from '../services/firebase';
 import { formatCurrency } from '../utils/formatters';
+import { askAIAdvisor, getAIUsage, AIUsage } from '../services/aiService';
 
 interface Props { available:number; income:number; spent:number; budget:number; upcomingBills:number; }
 type Answer={title:string;body:string;tip?:string};
-type Usage={success:boolean;plan:string;model:string;limit:number;used:number;remaining:number;inputTokens:number;outputTokens:number;failedRequests:number;month:string;lastUsedAt:number|null};
 const DEFAULT_LIMIT=100;
 
 const fallbackAnswer=(question:string,available:number,income:number,spent:number,budget:number,upcomingBills:number):Answer=>{
@@ -18,12 +17,36 @@ const fallbackAnswer=(question:string,available:number,income:number,spent:numbe
 };
 
 export const AIAdvisor:React.FC<Props>=({available,income,spent,budget,upcomingBills})=>{
- const[input,setInput]=useState(''); const[answer,setAnswer]=useState<Answer>(()=>fallbackAnswer('',available,income,spent,budget,upcomingBills)); const[loading,setLoading]=useState(false); const[error,setError]=useState(''); const[usage,setUsage]=useState<Usage|null>(null);
+ const[input,setInput]=useState('');
+ const[answer,setAnswer]=useState<Answer>(()=>fallbackAnswer('',available,income,spent,budget,upcomingBills));
+ const[loading,setLoading]=useState(false);
+ const[error,setError]=useState('');
+ const[usage,setUsage]=useState<AIUsage|null>(null);
  const context=useMemo(()=>({available,income,spent,budget,budgetRemaining:budget-spent,upcomingBills,savingsRate:income>0?Math.max(0,((income-spent)/income)*100):0}),[available,income,spent,budget,upcomingBills]);
- const userId=firebaseAuth.currentUser?.uid||'anonymous';
- const loadUsage=async()=>{try{const r=await fetch(`/api/ai/usage?userId=${encodeURIComponent(userId)}`);if(!r.ok)return;const d=await r.json();if(d?.success)setUsage(d);}catch{}};
- useEffect(()=>{loadUsage();},[userId]);
- const ask=async(q:string)=>{const trimmed=q.trim();if(!trimmed||loading)return;setInput('');setError('');setLoading(true);try{const r=await fetch('/api/ai/advisor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId,question:trimmed,context})});const d=await r.json().catch(()=>({}));if(!r.ok||!d?.success){setUsage(d?.usage||usage);throw new Error(d?.error||'AI service is unavailable.');}setAnswer({title:'AHVIQ AI says',body:d.answer,tip:'AI guidance is based on the financial snapshot currently available in AHVIQ.'});setUsage(d.usage);}catch(err:any){setError(err?.message||'AI service is unavailable.');setAnswer(fallbackAnswer(trimmed,available,income,spent,budget,upcomingBills));}finally{setLoading(false);}};
+
+ const loadUsage=async()=>{
+  try{setUsage(await getAIUsage());}
+  catch{setUsage(null);}
+ };
+ useEffect(()=>{loadUsage();},[]);
+
+ const ask=async(q:string)=>{
+  const trimmed=q.trim();
+  if(!trimmed||loading)return;
+  setInput('');setError('');setLoading(true);
+  try{
+   const result=await askAIAdvisor(trimmed,context);
+   setAnswer({title:'AHVIQ AI says',body:result.answer,tip:'AI guidance is based on the financial snapshot currently available in AHVIQ.'});
+   setUsage(result.usage);
+  }catch(err:any){
+   const details=err?.details;
+   if(details?.remaining!==undefined)setUsage(details);
+   else await loadUsage();
+   setError(err?.message||'AI service is unavailable.');
+   setAnswer(fallbackAnswer(trimmed,available,income,spent,budget,upcomingBills));
+  }finally{setLoading(false);}
+ };
+
  const used=usage?.used??0; const limit=usage?.limit??DEFAULT_LIMIT; const remaining=usage?.remaining??Math.max(0,limit-used); const progress=Math.min(100,(used/Math.max(1,limit))*100);
  return <section className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
   <div className="flex items-start gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm"><Bot className="h-5 w-5"/></span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h3 className="text-sm font-bold text-slate-900">AHVIQ AI Advisor</h3><span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[9px] font-bold text-indigo-600 ring-1 ring-indigo-100"><Sparkles className="h-3 w-3"/> Gemini AI</span></div><p className="mt-0.5 text-[11px] text-slate-500">Ask questions about your money and get answers based on your AHVIQ financial snapshot.</p></div></div>
