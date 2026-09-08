@@ -24,15 +24,12 @@ export type AIContext = {
   savingsRate: number;
 };
 
-const AI_API_URL = import.meta.env.VITE_AI_API_URL || '';
+// Public endpoint for the Cloudflare Worker. The Gemini key remains server-side.
+const AI_API_URL = 'https://ahviq-ai.ahviq.workers.dev';
 
 type AIError = Error & { details?: AIUsage };
 
 async function callAI<T>(payload: unknown): Promise<T> {
-  if (!AI_API_URL) {
-    throw new Error('AHVIQ AI backend is not configured yet.');
-  }
-
   const user = firebaseAuth.currentUser;
   if (!user) {
     throw new Error('Please sign in to use AHVIQ AI.');
