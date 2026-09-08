@@ -3,6 +3,7 @@ import{ArrowDownLeft,CalendarClock,Plus,ReceiptText,Target,TrendingUp,WalletCard
 import{collection,onSnapshot}from'firebase/firestore';
 import{firestore as db,firebaseAuth}from'../services/firebase';
 import{formatCurrency}from'../utils/formatters';
+import{AIAdvisor}from'./AIAdvisor';
 
 type RecurringItem={id:string;title:string;type:'income'|'expense'|'bill'|'investment';amount:number;day:number;month?:number;frequency:'monthly'|'yearly';active?:boolean};
 interface Props{available:number;income:number;spent:number;budget:number;cycleEnd:string;onAddExpense:()=>void;onAddIncome:()=>void;onOpenBudgets:()=>void;onOpenRecurring:()=>void}
@@ -17,6 +18,7 @@ export const OverviewInsights:React.FC<Props>=({available,income,spent,budget,on
  const daysUntil=(d:Date)=>Math.max(0,Math.ceil((d.getTime()-today.getTime())/86400000));
  const hasIncome=income>0;const budgetLeft=budget-spent;
  return <div className="mt-4 space-y-4">
+  <AIAdvisor available={available} income={income} spent={spent} budget={budget} upcomingBills={upcomingTotal}/>
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
    <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
     <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><CalendarClock className="h-5 w-5"/></span><div><h3 className="text-sm font-bold text-slate-900">Upcoming bills & commitments</h3><p className="text-[11px] text-slate-500">What needs to be kept aside</p></div></div><button type="button" onClick={onOpenRecurring} className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600">See all <ChevronRight className="h-3.5 w-3.5"/></button></div>
