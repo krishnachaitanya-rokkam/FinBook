@@ -1,95 +1,38 @@
-import React from 'react';
-import { ArrowDownLeft, CalendarClock, Plus, ReceiptText, Target, TrendingUp, WalletCards } from 'lucide-react';
-import { formatCurrency } from '../utils/formatters';
+import React,{useEffect,useMemo,useState}from'react';
+import{ArrowDownLeft,CalendarClock,Plus,ReceiptText,Target,TrendingUp,WalletCards,ChevronRight}from'lucide-react';
+import{collection,onSnapshot}from'firebase/firestore';
+import{firestore as db}from'../services/firebase';
+import{formatCurrency}from'../utils/formatters';
 
-interface Props {
-  available: number;
-  income: number;
-  spent: number;
-  budget: number;
-  cycleEnd: string;
-  onAddExpense: () => void;
-  onAddIncome: () => void;
-  onOpenBudgets: () => void;
-  onOpenRecurring: () => void;
-}
+type RecurringItem={id:string;title:string;type:'income'|'expense'|'bill'|'investment';amount:number;day:number;month?:number;frequency:'monthly'|'yearly';active?:boolean};
+interface Props{available:number;income:number;spent:number;budget:number;cycleEnd:string;onAddExpense:()=>void;onAddIncome:()=>void;onOpenBudgets:()=>void;onOpenRecurring:()=>void}
 
-export const OverviewInsights: React.FC<Props> = ({ available, income, spent, budget, cycleEnd, onAddExpense, onAddIncome, onOpenBudgets, onOpenRecurring }) => {
-  const today = new Date();
-  const end = new Date(`${cycleEnd}T23:59:59`);
-  const daysLeft = Math.max(1, Math.ceil((end.getTime() - today.getTime()) / 86400000));
-  const safeDaily = Math.max(0, available) / daysLeft;
-  const budgetLeft = budget - spent;
-  const hasBudget = budget > 0;
-  const hasIncome = income > 0;
+const nextDue=(i:RecurringItem,from=new Date())=>{const y=from.getFullYear(),m=from.getMonth();if(i.frequency==='yearly'){let d=new Date(y,(i.month||1)-1,Math.min(i.day,28));if(d<from)d=new Date(y+1,(i.month||1)-1,Math.min(i.day,28));return d}let d=new Date(y,m,Math.min(i.day,28));if(d<from)d=new Date(y,m+1,Math.min(i.day,28));return d};
+const money=(n:number)=>formatCurrency(n);
 
-  return (
-    <div className="mt-5 space-y-3">
-      <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white border border-slate-200 text-indigo-600">
-                <WalletCards className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Safe to spend today</p>
-                <p className="text-[11px] text-slate-500">Available money spread across the remaining days</p>
-              </div>
-            </div>
-            <p className={`mt-3 text-2xl sm:text-3xl font-bold tracking-tight tabular-nums ${available > 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-              {formatCurrency(safeDaily)}
-              <span className="ml-1 text-sm font-semibold text-slate-500">/ day</span>
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:w-auto">
-            <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Days left</p>
-              <p className="mt-0.5 text-sm font-bold text-slate-800">{daysLeft}</p>
-            </div>
-            <div className="rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Budget left</p>
-              <p className={`mt-0.5 text-sm font-bold ${!hasBudget ? 'text-slate-500' : budgetLeft >= 0 ? 'text-slate-800' : 'text-rose-600'}`}>{hasBudget ? formatCurrency(Math.max(0, budgetLeft)) : 'Not set'}</p>
-            </div>
-            <div className="col-span-2 sm:col-span-1 rounded-xl bg-white border border-slate-200 px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Status</p>
-              <p className={`mt-0.5 text-sm font-bold ${available >= 0 && (!hasBudget || budgetLeft >= 0) ? 'text-emerald-600' : 'text-rose-600'}`}>{available >= 0 && (!hasBudget || budgetLeft >= 0) ? 'On track' : 'Needs attention'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">What do you want to do?</h3>
-            <p className="mt-0.5 text-xs text-slate-500">Keep your money picture up to date.</p>
-          </div>
-          <Plus className="h-4 w-4 text-slate-400" />
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <button type="button" onClick={onAddExpense} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50">
-            <ReceiptText className="h-4 w-4 text-indigo-600" /> Add expense
-          </button>
-          <button type="button" onClick={onAddIncome} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-3 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50">
-            <ArrowDownLeft className="h-4 w-4" /> Add income
-          </button>
-          <button type="button" onClick={onOpenBudgets} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50">
-            <Target className="h-4 w-4 text-sky-600" /> Set budgets
-          </button>
-          <button type="button" onClick={onOpenRecurring} className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-left text-xs font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50">
-            <CalendarClock className="h-4 w-4 text-violet-600" /> Manage recurring
-          </button>
-        </div>
-      </div>
-
-      {!hasIncome && (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 px-4 py-3">
-          <TrendingUp className="h-4 w-4 shrink-0 text-emerald-600" />
-          <p className="text-xs text-emerald-800"><span className="font-bold">Start with income.</span> Add your salary or other regular income to make your safe-to-spend number meaningful.</p>
-          <button type="button" onClick={onAddIncome} className="ml-auto shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white">Add income</button>
-        </div>
-      )}
-    </div>
-  );
+export const OverviewInsights:React.FC<Props>=({available,income,spent,budget,onAddExpense,onAddIncome,onOpenBudgets,onOpenRecurring})=>{
+ const[recurring,setRecurring]=useState<RecurringItem[]>([]);
+ useEffect(()=>{const uid=(db as any)?undefined:undefined;return()=>{void uid}},[]);
+ useEffect(()=>{const rawUser=typeof window!=='undefined'?(window as any).__AHVIQ_USER_ID__:undefined;if(!rawUser)return;const unsub=onSnapshot(collection(db,'users',rawUser,'recurring'),snap=>setRecurring(snap.docs.map(d=>({id:d.id,...d.data()} as RecurringItem))));return()=>unsub()},[]);
+ const today=new Date();
+ const upcoming=useMemo(()=>recurring.filter(i=>i.active!==false&&(i.type==='bill'||i.type==='expense')).map(i=>({i,d:nextDue(i,today)})).filter(x=>{const days=Math.ceil((x.d.getTime()-today.getTime())/86400000);return days>=0&&days<=30}).sort((a,b)=>a.d.getTime()-b.d.getTime()).slice(0,5),[recurring,today.getDate()]);
+ const upcomingTotal=useMemo(()=>recurring.filter(i=>i.active!==false&&(i.type==='bill'||i.type==='expense')).map(i=>({i,d:nextDue(i,today)})).filter(x=>{const days=Math.ceil((x.d.getTime()-today.getTime())/86400000);return days>=0&&days<=30}).reduce((s,x)=>s+x.i.amount,0),[recurring,today.getDate()]);
+ const daysUntil=(d:Date)=>Math.max(0,Math.ceil((d.getTime()-today.getTime())/86400000));
+ const hasIncome=income>0;const budgetLeft=budget-spent;
+ return <div className="mt-4 space-y-4">
+   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+     <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+       <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"><CalendarClock className="h-5 w-5"/></span><div><h3 className="text-sm font-bold text-slate-900">Upcoming bills & commitments</h3><p className="text-[11px] text-slate-500">What needs to be kept aside</p></div></div></div><button type="button" onClick={onOpenRecurring} className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-700">See all <ChevronRight className="h-3.5 w-3.5"/></button></div>
+       <div className="mt-4"><p className="text-2xl font-bold tracking-tight tabular-nums text-slate-900">{money(upcomingTotal)} <span className="text-xs font-semibold text-slate-500">due in next 30 days</span></p></div>
+       {upcoming.length===0?<div className="mt-4 rounded-xl bg-slate-50 px-3 py-4 text-center"><p className="text-sm font-semibold text-slate-700">No upcoming bills</p><p className="mt-1 text-xs text-slate-500">Add recurring bills so AHVIQ can plan ahead.</p><button type="button" onClick={onOpenRecurring} className="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white">Add recurring bill</button></div>:<div className="mt-3 divide-y divide-slate-100">{upcoming.map(({i,d})=>{const days=daysUntil(d);return <div key={i.id} className="flex items-center gap-3 py-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-600"><WalletCards className="h-4 w-4"/></span><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-slate-800">{i.title}</p><p className="text-[10px] text-slate-500">Due {days===0?'today':days===1?'tomorrow':`in ${days} days`}</p></div><p className="text-xs font-bold tabular-nums text-slate-800">{money(i.amount)}</p><span className={`rounded-md px-1.5 py-1 text-[9px] font-bold ${days<=3?'bg-rose-50 text-rose-600':days<=7?'bg-amber-50 text-amber-700':'bg-slate-100 text-slate-600'}`}>{days}d</span></div>})}</div>}
+       <button type="button" onClick={onOpenRecurring} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2.5 text-xs font-bold text-indigo-700 hover:bg-indigo-50"><CalendarClock className="h-4 w-4"/> Manage recurring</button>
+     </section>
+     <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(15,23,42,0.04)]">
+       <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-bold text-slate-900">Money snapshot</h3><p className="text-[11px] text-slate-500">Your current spending position</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${available>=0&&budgetLeft>=0?'bg-emerald-50 text-emerald-700':'bg-rose-50 text-rose-700'}`}>{available>=0&&budgetLeft>=0?'On track':'Needs attention'}</span></div>
+       <div className="mt-4 grid grid-cols-2 gap-2"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Available</p><p className="mt-1 text-lg font-bold tabular-nums">{money(available)}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Budget left</p><p className={`mt-1 text-lg font-bold tabular-nums ${budgetLeft<0?'text-rose-600':'text-slate-900'}`}>{budget>0?money(Math.max(0,budgetLeft)):'Not set'}</p></div></div>
+       {!hasIncome&&<div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3"><TrendingUp className="h-4 w-4 shrink-0 text-emerald-600"/><p className="text-[11px] text-emerald-800"><span className="font-bold">Start with income.</span> Add salary or regular income to make your money picture meaningful.</p></div>}
+     </section>
+   </div>
+   <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.04)]"><div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-bold text-slate-900">Quick actions</h3><p className="mt-0.5 text-[11px] text-slate-500">Keep your money picture up to date.</p></div><Plus className="h-4 w-4 text-slate-400"/></div><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"><button type="button" onClick={onAddExpense} className="flex items-center gap-2 rounded-xl border border-rose-100 bg-rose-50/60 px-3 py-3 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"><ReceiptText className="h-4 w-4"/> Add expense</button><button type="button" onClick={onAddIncome} className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-3 text-left text-xs font-semibold text-emerald-700 hover:bg-emerald-50"><ArrowDownLeft className="h-4 w-4"/> Add income</button><button type="button" onClick={onOpenBudgets} className="flex items-center gap-2 rounded-xl border border-sky-100 bg-sky-50/60 px-3 py-3 text-left text-xs font-semibold text-sky-700 hover:bg-sky-50"><Target className="h-4 w-4"/> Set budgets</button><button type="button" onClick={onOpenRecurring} className="flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50/60 px-3 py-3 text-left text-xs font-semibold text-violet-700 hover:bg-violet-50"><CalendarClock className="h-4 w-4"/> Manage recurring</button></div></section>
+ </div>;
 };
