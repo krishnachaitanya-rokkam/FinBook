@@ -1,7 +1,4 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app from './firebase';
-
-const functions = getFunctions(app, 'us-central1');
+import { firebaseAuth } from './firebase';
 
 export type AIUsage = {
   success: boolean;
@@ -27,18 +24,47 @@ export type AIContext = {
   savingsRate: number;
 };
 
-const getUsageCall = httpsCallable<void, AIUsage>(functions, 'getAIUsage');
-const askCall = httpsCallable<
-  { question: string; context: AIContext },
-  { answer: string; usage: AIUsage }
->(functions, 'askAIAdvisor');
+const AI_API_URL = import.meta.env.VITE_AI_API_URL || '';
+
+type AIError = Error & { details?: AIUsage };
+
+async function callAI<T>(payload: unknown): Promise<T> {
+  if (!AI_API_URL) {
+    throw new Error('AHVIQ AI backend is not configured yet.');
+  }
+
+  const user = firebaseAuth.currentUser;
+  if (!user) {
+    throw new Error('Please sign in to use AHVIQ AI.');
+  }
+
+  const token = await user.getIdToken();
+  const response = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data?.error || 'AHVIQ AI request failed.') as AIError;
+    if (data?.usage) error.details = data.usage;
+    throw error;
+  }
+  return data as T;
+}
 
 export async function getAIUsage(): Promise<AIUsage> {
-  const result = await getUsageCall();
-  return result.data;
+  return callAI<AIUsage>({ action: 'usage' });
 }
 
 export async function askAIAdvisor(question: string, context: AIContext) {
-  const result = await askCall({ question, context });
-  return result.data;
+  return callAI<{ answer: string; usage: AIUsage }>({
+    action: 'ask',
+    question,
+    context,
+  });
 }
