@@ -1,6 +1,8 @@
 name: Fix goal cards
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 permissions:
   contents: write
 jobs:
@@ -26,15 +28,15 @@ jobs:
           s = s.replace("import { AlertTriangle, CheckCircle2, Target } from 'lucide-react';", "import { AlertTriangle, CheckCircle2, Pencil, Target, Trash2 } from 'lucide-react';")
           s = s.replace("interface Props { goals: FinancialGoal[]; }", "interface Props { goals: FinancialGoal[]; onEditGoal?: (goal: FinancialGoal) => void; onDeleteGoal?: (id: string) => void; }")
           s = s.replace("export const GoalPlanningCards: React.FC<Props> = ({ goals }) => {", "export const GoalPlanningCards: React.FC<Props> = ({ goals, onEditGoal, onDeleteGoal }) => {")
-          old = '<div className="flex items-start justify-between gap-3">\n        <div className="min-w-0">'
-          new = '<div className="flex items-start justify-between gap-3">\n        <div className="min-w-0">'
-          # Keep the existing header layout and add action buttons beside the status badge.
-          s = s.replace('<span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? \'bg-emerald-50 text-emerald-700\' : \'bg-amber-50 text-amber-700\'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? \'ON TRACK\' : \'NEEDS ATTENTION\'}</span>', '<div className="flex shrink-0 items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? \'bg-emerald-50 text-emerald-700\' : \'bg-amber-50 text-amber-700\'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? \'ON TRACK\' : \'NEEDS ATTENTION\'}</span>{onEditGoal && <button type="button" onClick={() => onEditGoal(p.goal)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600" aria-label={`Edit ${p.goal.name}`} title="Edit goal"><Pencil className="h-4 w-4" /></button>}{onDeleteGoal && <button type="button" onClick={() => onDeleteGoal(p.goal.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${p.goal.name}`} title="Delete goal"><Trash2 className="h-4 w-4" /></button>}</div>')
+          old = '<span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? \'bg-emerald-50 text-emerald-700\' : \'bg-amber-50 text-amber-700\'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? \'ON TRACK\' : \'NEEDS ATTENTION\'}</span>'
+          new = '<div className="flex shrink-0 items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? \'bg-emerald-50 text-emerald-700\' : \'bg-amber-50 text-amber-700\'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? \'ON TRACK\' : \'NEEDS ATTENTION\'}</span>{onEditGoal && <button type="button" onClick={() => onEditGoal(p.goal)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600" aria-label={`Edit ${p.goal.name}`} title="Edit goal"><Pencil className="h-4 w-4" /></button>}{onDeleteGoal && <button type="button" onClick={() => onDeleteGoal(p.goal.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${p.goal.name}`} title="Delete goal"><Trash2 className="h-4 w-4" /></button>}</div>'
+          if old not in s:
+              raise SystemExit('Goal status badge not found')
+          s = s.replace(old, new)
           cards.write_text(s)
 
           pm = Path('src/components/PortfolioManager.tsx')
           s = pm.read_text()
-          s = s.replace("import { Plus, ShieldCheck, X } from 'lucide-react';", "import { Plus, ShieldCheck, X } from 'lucide-react';")
           s = s.replace("import { GoalPlanningCards } from './GoalPlanningCards';\n", "")
           s = s.replace("import { PortfolioConfig } from '../services/portfolioService';", "import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';")
           s = s.replace("const [createGoalOpen, setCreateGoalOpen] = useState(false);", "const [createGoalOpen, setCreateGoalOpen] = useState(false);\n  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);")
