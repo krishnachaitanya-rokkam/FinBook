@@ -1,69 +1,25 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Target, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '../utils/formatters';
 
 type FamilyGoal = { id: string; name: string; targetAmount: number; targetDate: string; monthlyContribution: number; type?: 'savings' | 'investment'; currentAmount?: number };
 interface FamilyGoalPlannerProps { goals: FamilyGoal[]; }
-
-function monthsUntil(targetDate: string): number {
-  const target = new Date(`${targetDate}T23:59:59`);
-  if (Number.isNaN(target.getTime())) return 0;
-  return Math.max(0, Math.ceil((target.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.4375)));
-}
-
-function project(goal: FamilyGoal, months: number): number {
-  const current = Math.max(0, Number(goal.currentAmount) || 0);
-  const monthly = Math.max(0, Number(goal.monthlyContribution) || 0);
-  if (goal.type !== 'investment') return current + monthly * months;
-  const monthlyRate = Math.pow(1 + 0.08, 1 / 12) - 1;
-  let value = current;
-  for (let i = 0; i < months; i += 1) value = value * (1 + monthlyRate) + monthly;
-  return value;
-}
+const DEFAULT_INVESTMENT_RETURN = 8;
+function monthsUntil(targetDate: string): number { const target = new Date(`${targetDate}T23:59:59`); if (Number.isNaN(target.getTime())) return 0; return Math.max(0, Math.ceil((target.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.4375))); }
+function monthlyRate(annualReturn: number): number { return Math.pow(1 + Math.max(0, annualReturn) / 100, 1 / 12) - 1; }
+function project(goal: FamilyGoal, months: number, annualReturn: number): number { const current = Math.max(0, Number(goal.currentAmount) || 0); const monthly = Math.max(0, Number(goal.monthlyContribution) || 0); const rate = monthlyRate(annualReturn); let value = current; for (let i = 0; i < months; i += 1) value = value * (1 + rate) + monthly; return value; }
+function requiredMonthly(goal: FamilyGoal, months: number, annualReturn: number): number { const target = Math.max(0, Number(goal.targetAmount) || 0); const current = Math.max(0, Number(goal.currentAmount) || 0); if (months <= 0) return Math.max(0, target - current); if (target <= current) return 0; const rate = monthlyRate(annualReturn); if (rate === 0) return Math.ceil((target - current) / months / 100) * 100; const futureCurrent = current * Math.pow(1 + rate, months); const factor = (Math.pow(1 + rate, months) - 1) / rate; return Math.max(0, Math.ceil((target - futureCurrent) / factor / 100) * 100); }
 
 export const FamilyGoalPlanner: React.FC<FamilyGoalPlannerProps> = ({ goals }) => {
-  const plans = useMemo(() => goals.map(goal => {
-    const target = Math.max(0, Number(goal.targetAmount) || 0);
-    const current = Math.max(0, Number(goal.currentAmount) || 0);
-    const monthly = Math.max(0, Number(goal.monthlyContribution) || 0);
-    const months = monthsUntil(goal.targetDate);
-    const gap = Math.max(0, target - current);
-    const requiredMonthly = months > 0 ? Math.ceil(gap / months / 100) * 100 : gap;
-    const projected = project(goal, months);
-    const projectedGap = Math.max(0, target - projected);
-    const onTrack = gap <= 0 || projected >= target;
-    return { goal, target, current, monthly, months, requiredMonthly, projected, projectedGap, onTrack };
-  }), [goals]);
-
+  const [investmentReturn, setInvestmentReturn] = useState(DEFAULT_INVESTMENT_RETURN);
+  const plans = useMemo(() => goals.map(goal => { const target = Math.max(0, Number(goal.targetAmount) || 0); const current = Math.max(0, Number(goal.currentAmount) || 0); const monthly = Math.max(0, Number(goal.monthlyContribution) || 0); const months = monthsUntil(goal.targetDate); const isInvestment = goal.type === 'investment'; const annualReturn = isInvestment ? investmentReturn : 0; const required = requiredMonthly(goal, months, annualReturn); const projected = project(goal, months, annualReturn); const projectedGap = Math.max(0, target - projected); const onTrack = target <= current || projected >= target; return { goal, target, current, monthly, months, requiredMonthly: required, projected, projectedGap, onTrack, annualReturn, isInvestment }; }), [goals, investmentReturn]);
   if (!goals.length) return null;
-  const onTrack = plans.filter(p => p.onTrack).length;
-  const totalGap = plans.reduce((sum, p) => sum + p.projectedGap, 0);
-
+  const onTrack = plans.filter(p => p.onTrack).length; const totalGap = plans.reduce((sum, p) => sum + p.projectedGap, 0); const investmentCount = plans.filter(p => p.isInvestment).length;
   return <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
-    <div className="flex items-start justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Goal intelligence</p><h3 className="mt-1 text-lg font-bold text-slate-900">Family goals health</h3><p className="mt-1 text-xs sm:text-sm text-slate-500">See whether the household contribution plan is enough to reach each target on time.</p></div>
-      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700">{onTrack}/{plans.length} ON TRACK</span>
-    </div>
-    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Goals on track</p><p className="mt-1 text-lg font-bold text-slate-900">{onTrack} / {plans.length}</p></div>
-      <div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Projected gap</p><p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{formatCurrency(totalGap)}</p></div>
-    </div>
-    <div className="mt-4 space-y-3">
-      {plans.map(item => {
-        const progress = item.target > 0 ? Math.min(100, Math.round(item.current / item.target * 100)) : 0;
-        return <div key={item.goal.id} className="rounded-xl border border-slate-200 p-3 sm:p-4">
-          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Target className="h-4 w-4 shrink-0 text-indigo-600" /><p className="font-bold text-slate-900 truncate">{item.goal.name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${item.goal.type === 'investment' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{item.goal.type === 'investment' ? 'INVESTMENT' : 'SAVINGS'}</span></div><p className="mt-1 text-xs text-slate-500">{item.months > 0 ? `${item.months} months remaining` : 'Target date reached'}</p></div><div className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${item.onTrack ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{item.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{item.onTrack ? 'ON TRACK' : 'NEEDS ATTENTION'}</div></div>
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${progress}%` }} /></div>
-          <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Current</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.current)}</p></div>
-            <div className="rounded-lg bg-indigo-50 p-2.5"><p className="text-[10px] text-indigo-500">Required / month</p><p className="mt-0.5 text-sm font-bold text-indigo-700 tabular-nums">{formatCurrency(item.requiredMonthly)}</p></div>
-            <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Family plan</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.monthly)}</p></div>
-            <div className={`rounded-lg p-2.5 ${item.onTrack ? 'bg-emerald-50' : 'bg-amber-50'}`}><p className="text-[10px] text-slate-500">Projected</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.projected)}</p></div>
-          </div>
-          {!item.onTrack && <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2"><TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /><p className="text-xs leading-5 text-amber-800">Increase the family plan by about <strong>{formatCurrency(Math.max(0, item.requiredMonthly - item.monthly))}</strong> per month to cover the target without relying on higher returns.</p></div>}
-        </div>;
-      })}
-    </div>
-    <p className="mt-3 text-[10px] text-slate-400">Investment projections use an illustrative 8% annual return. Savings goals use contributions only. Neither is a guarantee.</p>
+    <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-indigo-600">Goal intelligence</p><h3 className="mt-1 text-lg font-bold text-slate-900">Family Goal Planner</h3><p className="mt-1 text-xs sm:text-sm text-slate-500">Plan the household contribution using time, current progress and investment returns.</p></div><span className="rounded-full bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700">{onTrack}/{plans.length} ON TRACK</span></div>
+    <div className="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3"><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Investment return assumption</p><p className="text-xs text-slate-500">Applied to investment goals for both projection and required monthly contribution.</p></div><div className="flex flex-wrap gap-1">{[6,8,10,12,15].map(value=><button key={value} type="button" onClick={()=>setInvestmentReturn(value)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${investmentReturn===value?'bg-slate-900 text-white':'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>{value}%</button>)}</div></div></div>
+    <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3"><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Goals on track</p><p className="mt-1 text-lg font-bold text-slate-900">{onTrack} / {plans.length}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Projected gap</p><p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{formatCurrency(totalGap)}</p></div><div className="rounded-xl bg-slate-50 p-3"><p className="text-[11px] text-slate-400">Selected return</p><p className="mt-1 text-lg font-bold text-slate-900">{investmentCount ? `${investmentReturn}% p.a.` : 'Savings only'}</p></div></div>
+    <div className="mt-4 space-y-3">{plans.map(item => { const progress = item.target > 0 ? Math.min(100, Math.round(item.current / item.target * 100)) : 0; return <div key={item.goal.id} className="rounded-xl border border-slate-200 p-3 sm:p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Target className="h-4 w-4 shrink-0 text-indigo-600"/><p className="font-bold text-slate-900 truncate">{item.goal.name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${item.isInvestment?'bg-amber-50 text-amber-700':'bg-emerald-50 text-emerald-700'}`}>{item.isInvestment?'INVESTMENT':'SAVINGS'}</span></div><p className="mt-1 text-xs text-slate-500">Target {formatCurrency(item.target)} · {item.months>0?`${item.months} months remaining`:'Target date reached'}</p></div><div className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${item.onTrack?'bg-emerald-50 text-emerald-700':'bg-amber-50 text-amber-700'}`}>{item.onTrack?<CheckCircle2 className="h-3.5 w-3.5"/>:<AlertTriangle className="h-3.5 w-3.5"/>}{item.onTrack?'ON TRACK':'NEEDS ATTENTION'}</div></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{width:`${progress}%`}}/></div><div className="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-2"><div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Current</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.current)}</p></div><div className="rounded-lg bg-indigo-50 p-2.5"><p className="text-[10px] text-indigo-500">Required / month</p><p className="mt-0.5 text-sm font-bold text-indigo-700 tabular-nums">{formatCurrency(item.requiredMonthly)}</p></div><div className="rounded-lg bg-violet-50 p-2.5"><p className="text-[10px] text-violet-500">Expected return</p><p className="mt-0.5 text-sm font-bold text-violet-700">{item.isInvestment?`${item.annualReturn}% p.a.`:'0%'}</p></div><div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Family plan</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.monthly)}</p></div><div className={`rounded-lg p-2.5 ${item.onTrack?'bg-emerald-50':'bg-amber-50'}`}><p className="text-[10px] text-slate-500">Projected</p><p className="mt-0.5 text-sm font-bold tabular-nums">{formatCurrency(item.projected)}</p></div></div>{!item.onTrack&&<div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2"><TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"/><p className="text-xs leading-5 text-amber-800">At the selected return, increase the family plan by about <strong>{formatCurrency(Math.max(0,item.requiredMonthly-item.monthly))}</strong> per month to cover the target.</p></div>}</div>; })}</div>
+    <p className="mt-3 text-[10px] text-slate-400">Investment goals use the selected illustrative annual return with monthly compounding. Savings goals use 0%. Returns are not guaranteed.</p>
   </section>;
 };
