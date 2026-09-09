@@ -16,6 +16,9 @@ export interface NetWorthItem {
   type: string;
 }
 
+export type GoalType = 'savings' | 'investment';
+export type GoalScope = 'personal' | 'family';
+
 export interface FinancialGoal {
   id: string;
   name: string;
@@ -23,6 +26,10 @@ export interface FinancialGoal {
   currentAmount: number;
   targetDate: string;
   monthlyContribution: number;
+  type: GoalType;
+  scope: GoalScope;
+  familyId?: string;
+  familyName?: string;
 }
 
 export interface PortfolioConfig {
@@ -76,6 +83,10 @@ export function subscribeToPortfolio(
           currentAmount: Number(goal.currentAmount) || 0,
           targetDate: String(goal.targetDate || ''),
           monthlyContribution: Number(goal.monthlyContribution) || 0,
+          type: goal.type === 'investment' ? 'investment' : 'savings',
+          scope: goal.scope === 'family' ? 'family' : 'personal',
+          familyId: goal.familyId ? String(goal.familyId) : undefined,
+          familyName: goal.familyName ? String(goal.familyName) : undefined,
         })),
       });
     },
@@ -104,6 +115,10 @@ export async function savePortfolio(uid: string, config: PortfolioConfig): Promi
     currentAmount: Number(goal.currentAmount) || 0,
     targetDate: goal.targetDate,
     monthlyContribution: Number(goal.monthlyContribution) || 0,
+    type: goal.type === 'investment' ? 'investment' : 'savings',
+    scope: goal.scope === 'family' ? 'family' : 'personal',
+    ...(goal.familyId ? { familyId: goal.familyId } : {}),
+    ...(goal.familyName ? { familyName: goal.familyName } : {}),
   }));
   await setDoc(portfolioDoc(uid), { fields, netWorthItems, goals });
 }
