@@ -33,6 +33,10 @@ export interface Expense {
   date: string;
   paymentMethod: PaymentMethod;
   notes?: string;
+  goalId?: string;
+  goalName?: string;
+  goalScope?: 'personal' | 'family';
+  goalFamilyId?: string;
   createdAt: number;
 }
 
