@@ -30,9 +30,10 @@ export function FamilyGoalContribution() {
   const resetContributionEditor = () => { setAmount(''); setEditing(false); setMessage(''); };
 
   const saveContribution = async () => {
+    const wasEditing = editing;
     const value = Number(amount);
     if (!selected || !uid || !Number.isFinite(value) || value <= 0) { setMessage('Enter a valid contribution.'); return; }
-    if (editing ? value > maxEditableContribution : value > remaining) { setMessage(`Maximum contribution for this goal is ${formatCurrency(editing ? maxEditableContribution : remaining)}.`); return; }
+    if (wasEditing ? value > maxEditableContribution : value > remaining) { setMessage(`Maximum contribution for this goal is ${formatCurrency(wasEditing ? maxEditableContribution : remaining)}.`); return; }
     setBusy(true); setMessage('');
     try {
       await runTransaction(firestore, async transaction => {
@@ -40,7 +41,7 @@ export function FamilyGoalContribution() {
         if (!snap.exists()) throw new Error('Family goal no longer exists.');
         const data = snap.data() as Goal;
         const contributions = { ...(data.contributions || {}) };
-        contributions[uid] = editing ? value : (Number(contributions[uid]) || 0) + value;
+        contributions[uid] = wasEditing ? value : (Number(contributions[uid]) || 0) + value;
         const contributorNames = { ...(data.contributorNames || {}) };
         contributorNames[uid] = firebaseAuth.currentUser?.displayName || firebaseAuth.currentUser?.email?.split('@')[0] || 'You';
         const nextCurrent = Object.values(contributions).reduce((sum, item) => sum + (Number(item) || 0), 0);
@@ -48,7 +49,7 @@ export function FamilyGoalContribution() {
       });
       setAmount('');
       setEditing(false);
-      setMessage(`${formatCurrency(value)} ${editing ? 'set as your contribution to' : 'added to'} ${selected.name}.`);
+      setMessage(wasEditing ? `${formatCurrency(value)} is now your contribution to ${selected.name}.` : `${formatCurrency(value)} added to ${selected.name}.`);
     } catch (e: any) { setMessage(e?.message || 'Could not save the contribution.'); } finally { setBusy(false); }
   };
 
