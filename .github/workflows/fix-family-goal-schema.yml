@@ -15,45 +15,37 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           p = Path('src/components/PortfolioManagerCore.tsx')
           s = p.read_text()
-          old = '''  const syncFamilyGoal = async (goal: FinancialGoal, previousFamilyId?: string) => {
-            const oldFamilyId = previousFamilyId || '';
-            if (oldFamilyId && (goal.scope !== 'family' || goal.familyId !== oldFamilyId)) {
-              await deleteDoc(doc(firestore, 'families', oldFamilyId, 'goals', goal.id));
-            }
-            if (goal.scope === 'family' && goal.familyId) {
-              await setDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id), {
-                name: goal.name, targetAmount: goal.targetAmount, currentAmount: goal.currentAmount, targetDate: goal.targetDate, monthlyContribution: goal.monthlyContribution,
-                type: goal.type, scope: 'family', familyId: goal.familyId, familyName: goal.familyName || '', createdBy: firebaseAuth.currentUser?.uid || '', createdAt: Date.now(), updatedAt: Date.now()
-              }, { merge: true });
-            }
-          };'''
-          new = '''  const syncFamilyGoal = async (goal: FinancialGoal, previousFamilyId?: string) => {
-            const oldFamilyId = previousFamilyId || '';
-            if (oldFamilyId && (goal.scope !== 'family' || goal.familyId !== oldFamilyId)) {
-              await deleteDoc(doc(firestore, 'families', oldFamilyId, 'goals', goal.id));
-            }
-            if (goal.scope === 'family' && goal.familyId) {
-              // Keep the shared document schema identical to FamilyGoals.tsx so Firestore
-              // rules can treat a mirrored goal exactly like a goal created in Family.
-              await setDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id), {
-                name: goal.name,
-                targetAmount: goal.targetAmount,
-                targetDate: goal.targetDate,
-                monthlyContribution: goal.monthlyContribution,
-                createdBy: firebaseAuth.currentUser?.uid || '',
-                createdAt: Date.now(),
-                currentAmount: goal.currentAmount,
-                contributions: {},
-                contributorNames: {},
-                updatedAt: Date.now()
-              }, { merge: true });
-            }
-          };'''
-          if old not in s:
-              raise SystemExit('syncFamilyGoal block not found')
-          p.write_text(s.replace(old, new))
+          pattern = r"  const syncFamilyGoal = async \(goal: FinancialGoal, previousFamilyId\?: string\) => \{.*?\n  \};\n  useEffect"
+          replacement = '''  const syncFamilyGoal = async (goal: FinancialGoal, previousFamilyId?: string) => {
+    const oldFamilyId = previousFamilyId || '';
+    if (oldFamilyId && (goal.scope !== 'family' || goal.familyId !== oldFamilyId)) {
+      await deleteDoc(doc(firestore, 'families', oldFamilyId, 'goals', goal.id));
+    }
+    if (goal.scope === 'family' && goal.familyId) {
+      // Match the shared FamilyGoals schema so Firestore rules treat mirrored goals
+      // the same way as goals created directly from the Family dashboard.
+      await setDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id), {
+        name: goal.name,
+        targetAmount: goal.targetAmount,
+        targetDate: goal.targetDate,
+        monthlyContribution: goal.monthlyContribution,
+        createdBy: firebaseAuth.currentUser?.uid || '',
+        createdAt: Date.now(),
+        currentAmount: goal.currentAmount,
+        contributions: {},
+        contributorNames: {},
+        updatedAt: Date.now()
+      }, { merge: true });
+    }
+  };
+  useEffect'''
+          updated, count = re.subn(pattern, replacement, s, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit(f'syncFamilyGoal block not found: {count}')
+          p.write_text(updated)
           PY
       - name: Commit fix
         run: |
