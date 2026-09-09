@@ -1,4 +1,4 @@
-name: Deploy FinBook to GitHub Pages
+name: Deploy AHVIQ to GitHub Pages
 
 on:
   push:
