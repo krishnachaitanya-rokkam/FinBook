@@ -38,6 +38,11 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   }, []);
   useEffect(() => { setWhatIfMonthly(currentMonthly); }, [currentMonthly]);
 
+  const syncGoalReturn = async (annualReturn: number) => {
+    const nextGoals = goals.map(goal => goal.type === 'investment' ? { ...goal, expectedAnnualReturn: annualReturn } : goal);
+    await onSave({ ...config, goals: nextGoals });
+  };
+
   const project = (monthlyContribution: number) => {
     const monthlyRate = Math.pow(1 + rate / 100, 1 / 12) - 1;
     const months = period * 12;
@@ -53,7 +58,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   return <>
     <PortfolioManagerCore config={config} onSave={onSave} />
     {goalsVisible && <>
-      <GoalPlanner goals={goals} />
+      <GoalPlanner goals={goals} onReturnChange={syncGoalReturn} />
       <GoalIntelligence goals={goals.map(goal => ({ ...goal, scope: 'personal' as const }))} />
       <FamilyGoalContribution />
     </>}
