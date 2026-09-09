@@ -1,0 +1,35 @@
+name: Remove family goal ownership UI
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/remove-family-goal-ownership-ui.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove family ownership controls from individual Goals
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          old = '''<div><span className="text-xs font-semibold text-slate-600">Goal ownership</span><div className="mt-1 grid grid-cols-2 gap-2"><button type="button" onClick={() => setGoalDraft(current => ({ ...current, scope: 'personal', familyId: '', familyName: '' }))} className={`rounded-xl px-3 py-2 text-sm font-semibold ${goalDraft.scope === 'personal' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>Personal</button><button type="button" disabled={availableFamilies.length === 0} onClick={() => setGoalDraft(current => ({ ...current, scope: 'family', familyId: current.familyId || availableFamilies[0]?.id || '', familyName: current.familyName || availableFamilies[0]?.name || '' }))} className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40 ${goalDraft.scope === 'family' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>Family</button></div>{availableFamilies.length > 0 && goalDraft.scope === 'family' && <select value={goalDraft.familyId} onChange={e => { const family = availableFamilies.find(f => f.id === e.target.value); setGoalDraft(current => ({ ...current, familyId: e.target.value, familyName: family?.name || '' })); }} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">{availableFamilies.map(family => <option key={family.id} value={family.id}>{family.name}</option>)}</select>}{availableFamilies.length === 0 && <p className="mt-1 text-[11px] text-slate-400">Create or join a family to tag this goal as a family goal.</p>}</div>'''
+          if old not in s:
+              raise SystemExit('Expected Goal ownership UI block was not found; refusing to modify the file.')
+          s = s.replace(old, '')
+          s = s.replace("import { deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';\n", '')
+          s = s.replace("import { firebaseAuth, firestore } from '../services/firebase';\n", '')
+          s = s.replace("  const previous = editingGoalId ? goals.find(existing => existing.id === editingGoalId) : undefined;\n", '')
+          p.write_text(s)
+      - name: Commit source change and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManagerCore.tsx
+          git rm .github/workflows/remove-family-goal-ownership-ui.yml
+          git commit -m "Remove family goal ownership from individual goals"
+          git push
