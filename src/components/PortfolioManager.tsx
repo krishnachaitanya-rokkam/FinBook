@@ -4,7 +4,6 @@ import { PortfolioConfig } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 import { PortfolioManager as PortfolioManagerCore } from './PortfolioManagerCore';
 import { GoalPlanner } from './GoalPlanner';
-import { GoalPlanningCards } from './GoalPlanningCards';
 import { FamilyGoalContribution } from './FamilyGoalContribution';
 import { GoalIntelligence } from './GoalIntelligence';
 
@@ -60,7 +59,6 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
     <PortfolioManagerCore config={config} onSave={onSave} />
     {goalsVisible && <>
       <GoalPlanner goals={goals} onReturnChange={syncGoalReturn} />
-      <GoalPlanningCards goals={goals} />
       <GoalIntelligence goals={goals.map(goal => ({ ...goal, scope: 'personal' as const }))} />
       <FamilyGoalContribution />
     </>}
