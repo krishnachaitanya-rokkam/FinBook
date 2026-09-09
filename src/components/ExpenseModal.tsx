@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Expense, CategoryId, PaymentMethod, InvestmentType } from '../types';
 import { CATEGORIES } from '../data/categories';
-import { X, IndianRupee, Calendar, Tag, CreditCard, AlignLeft, TrendingUp } from 'lucide-react';
+import { X, IndianRupee, Calendar, Tag, CreditCard, AlignLeft, TrendingUp, Target, Users } from 'lucide-react';
 import { CategoryIcon } from './CategoryIcon';
 import { getTodayDateString } from '../utils/formatters';
-import { firebaseAuth } from '../services/firebase';
+import { firebaseAuth, firestore } from '../services/firebase';
 import { CustomCategory, subscribeToCustomCategories } from '../services/categoryService';
+import { collection, doc, onSnapshot } from 'firebase/firestore';
 
 interface ExpenseModalProps {
   isOpen: boolean;
@@ -14,6 +15,17 @@ interface ExpenseModalProps {
   editingExpense?: Expense | null;
   defaultDate?: string;
 }
+
+type GoalOption = {
+  id: string;
+  name: string;
+  currentAmount: number;
+  targetAmount: number;
+  targetDate?: string;
+  scope: 'personal' | 'family';
+  familyId?: string;
+  familyName?: string;
+};
 
 const INVESTMENT_TYPES: Array<{ id: InvestmentType; label: string }> = [
   { id: 'ppf', label: 'PPF' },
@@ -26,6 +38,8 @@ const INVESTMENT_TYPES: Array<{ id: InvestmentType; label: string }> = [
   { id: 'other_investment', label: 'Other Investment' },
 ];
 
+const money = (value: number) => `₹${Math.max(0, value).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+
 export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onSave, editingExpense, defaultDate }) => {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -34,6 +48,12 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onS
   const [date, setDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('upi');
   const [notes, setNotes] = useState('');
+  const [goalEnabled, setGoalEnabled] = useState(false);
+  const [goalScope, setGoalScope] = useState<'personal' | 'family'>('personal');
+  const [selectedGoalId, setSelectedGoalId] = useState('');
+  const [personalGoals, setPersonalGoals] = useState<GoalOption[]>([]);
+  const [familyGoals, setFamilyGoals] = useState<GoalOption[]>([]);
+  const [familyId, setFamilyId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
 
@@ -44,12 +64,56 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onS
   }, [isOpen]);
 
   useEffect(() => {
+    const uid = firebaseAuth.currentUser?.uid;
+    if (!uid || !isOpen) {
+      setPersonalGoals([]);
+      setFamilyGoals([]);
+      return;
+    }
+    let stopFamily: (() => void) | undefined;
+    const stopPortfolio = onSnapshot(doc(firestore, 'users', uid, 'portfolio', 'config'), snap => {
+      const goals = Array.isArray(snap.data()?.goals) ? snap.data()?.goals : [];
+      setPersonalGoals(goals.filter((goal: any) => (goal.scope || 'personal') === 'personal').map((goal: any) => ({
+        id: String(goal.id), name: String(goal.name), currentAmount: Number(goal.currentAmount) || 0,
+        targetAmount: Number(goal.targetAmount) || 0, targetDate: goal.targetDate, scope: 'personal' as const,
+      })));
+    });
+    const stopLink = onSnapshot(doc(firestore, 'users', uid, 'family', 'link'), linkSnap => {
+      stopFamily?.();
+      stopFamily = undefined;
+      const nextFamilyId = String(linkSnap.data()?.familyId || '');
+      setFamilyId(nextFamilyId);
+      if (!nextFamilyId) {
+        setFamilyGoals([]);
+        return;
+      }
+      stopFamily = onSnapshot(collection(firestore, 'families', nextFamilyId, 'goals'), goalsSnap => {
+        setFamilyGoals(goalsSnap.docs.map(goalSnap => {
+          const goal = goalSnap.data();
+          return {
+            id: goalSnap.id,
+            name: String(goal.name || goalSnap.id),
+            currentAmount: Number(goal.currentAmount) || 0,
+            targetAmount: Number(goal.targetAmount) || 0,
+            targetDate: goal.targetDate,
+            scope: 'family' as const,
+            familyId: nextFamilyId,
+            familyName: String(goal.familyName || ''),
+          };
+        }));
+      });
+    });
+    return () => { stopPortfolio(); stopLink(); stopFamily?.(); };
+  }, [isOpen]);
+
+  useEffect(() => {
     if (editingExpense) {
       setTitle(editingExpense.title); setAmount(editingExpense.amount.toString()); setCategoryId(editingExpense.categoryId);
       setInvestmentType(editingExpense.investmentType || 'mutual_funds'); setDate(editingExpense.date); setPaymentMethod(editingExpense.paymentMethod); setNotes(editingExpense.notes || '');
+      setGoalEnabled(Boolean(editingExpense.goalId)); setGoalScope(editingExpense.goalScope || 'personal'); setSelectedGoalId(editingExpense.goalId || '');
     } else {
       setTitle(''); setAmount(''); setCategoryId('groceries'); setInvestmentType('mutual_funds');
-      setDate(defaultDate || getTodayDateString()); setPaymentMethod('upi'); setNotes('');
+      setDate(defaultDate || getTodayDateString()); setPaymentMethod('upi'); setNotes(''); setGoalEnabled(false); setGoalScope('personal'); setSelectedGoalId('');
     }
     setError(null);
   }, [editingExpense, isOpen, defaultDate]);
@@ -60,8 +124,17 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onS
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!goalEnabled) { setSelectedGoalId(''); return; }
+    const goals = goalScope === 'family' ? familyGoals : personalGoals;
+    if (selectedGoalId && !goals.some(goal => goal.id === selectedGoalId)) setSelectedGoalId('');
+  }, [goalEnabled, goalScope, familyGoals, personalGoals, selectedGoalId]);
+
   if (!isOpen) return null;
   const allCategories = [...CATEGORIES, ...customCategories];
+  const visibleGoals = goalScope === 'family' ? familyGoals : personalGoals;
+  const selectedGoal = visibleGoals.find(goal => goal.id === selectedGoalId);
+  const noGoals = visibleGoals.length === 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault(); setError(null);
@@ -69,7 +142,13 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onS
     if (!trimmedTitle) { setError('Please provide a description or merchant name.'); return; }
     if (isNaN(numAmount) || numAmount <= 0) { setError('Please enter a valid positive amount.'); return; }
     if (!date) { setError('Please select a date.'); return; }
-    onSave({ title: trimmedTitle, amount: Math.round(numAmount * 100) / 100, categoryId, ...(categoryId === 'investment' ? { investmentType } : {}), date, paymentMethod, notes: notes.trim() }, editingExpense ? editingExpense.id : undefined);
+    if (categoryId === 'investment' && goalEnabled && !selectedGoal) {
+      setError(noGoals ? `No ${goalScope} goals are available. Create a goal first, or turn off Goal contribution.` : 'Select a goal before saving this transaction.'); return;
+    }
+    const goalData = categoryId === 'investment' && goalEnabled && selectedGoal ? {
+      goalId: selectedGoal.id, goalName: selectedGoal.name, goalScope: selectedGoal.scope, goalFamilyId: selectedGoal.familyId,
+    } : {};
+    onSave({ title: trimmedTitle, amount: Math.round(numAmount * 100) / 100, categoryId, ...(categoryId === 'investment' ? { investmentType } : {}), ...goalData, date, paymentMethod, notes: notes.trim() }, editingExpense ? editingExpense.id : undefined);
     onClose();
   };
 
@@ -82,7 +161,11 @@ export const ExpenseModal: React.FC<ExpenseModalProps> = ({ isOpen, onClose, onS
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label htmlFor="input-modal-amount" className="block text-xs font-semibold text-slate-700 mb-1">Amount (₹) *</label><div className="relative"><IndianRupee className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input id="input-modal-amount" type="number" step="0.01" min="0.01" required placeholder="0.00" value={amount} onChange={e=>setAmount(e.target.value)} className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-sm font-bold text-slate-900 placeholder:text-slate-400 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900 tabular-nums" autoFocus/></div></div><div><label htmlFor="input-modal-date" className="block text-xs font-semibold text-slate-700 mb-1">Transaction Date *</label><div className="relative"><Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input id="input-modal-date" type="date" required value={date} onChange={e=>setDate(e.target.value)} className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-xs text-slate-900 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"/></div></div></div>
           <div><label htmlFor="input-modal-title" className="block text-xs font-semibold text-slate-700 mb-1">Title / Merchant *</label><input id="input-modal-title" type="text" required placeholder="e.g. Whole Foods Market, Electric Bill, SIP" value={title} onChange={e=>setTitle(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"/></div>
           <div><label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1"><Tag className="h-3.5 w-3.5 text-slate-400"/><span>Category *</span></label><div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto p-1.5 border border-slate-200/80 rounded-lg bg-slate-50/50 custom-scrollbar">{allCategories.map(cat=>{const isSelected=categoryId===cat.id;return <button key={cat.id} type="button" onClick={()=>setCategoryId(cat.id as CategoryId)} className={`flex items-center gap-2 rounded-md p-1.5 text-left text-xs transition border shadow-2xs ${isSelected?'border-slate-900 bg-slate-900 font-semibold text-white':'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}><div className={`flex h-5 w-5 items-center justify-center rounded-sm shrink-0 ${isSelected?'bg-white/20 text-white':''}`} style={isSelected?undefined:{backgroundColor:`${cat.color}20`,color:cat.color}}><CategoryIcon categoryId={cat.id} className="h-3 w-3"/></div><span className="truncate">{cat.name}</span></button>})}</div></div>
-          {categoryId === 'investment' && <div><label htmlFor="select-investment-type" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5 text-teal-600"/><span>Investment Type *</span></label><select id="select-investment-type" value={investmentType} onChange={e=>setInvestmentType(e.target.value as InvestmentType)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900">{INVESTMENT_TYPES.map(type=><option key={type.id} value={type.id}>{type.label}</option>)}</select><p className="mt-1 text-[11px] text-slate-400">This automatically updates the matching Portfolio bucket.</p></div>}
+          {categoryId === 'investment' && <div className="space-y-3"><div><label htmlFor="select-investment-type" className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5 text-teal-600"/><span>Investment Type *</span></label><select id="select-investment-type" value={investmentType} onChange={e=>setInvestmentType(e.target.value as InvestmentType)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900">{INVESTMENT_TYPES.map(type=><option key={type.id} value={type.id}>{type.label}</option>)}</select><p className="mt-1 text-[11px] text-slate-400">This automatically updates the matching Portfolio bucket.</p></div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3"><div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Target className="h-4 w-4 text-indigo-600"/><span className="text-xs font-bold text-slate-800">Goal contribution</span></div><p className="mt-0.5 text-[11px] text-slate-500">Link this investment to a financial goal.</p></div><button type="button" role="switch" aria-checked={goalEnabled} onClick={()=>setGoalEnabled(value=>!value)} className={`relative h-6 w-11 rounded-full transition ${goalEnabled?'bg-indigo-600':'bg-slate-300'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition ${goalEnabled?'left-6':'left-1'}`}/></button></div>
+              {goalEnabled && <div className="mt-3 space-y-3 border-t border-slate-200 pt-3"><div className="grid grid-cols-2 gap-2"><button type="button" onClick={()=>{setGoalScope('personal');setSelectedGoalId('')}} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${goalScope==='personal'?'border-indigo-600 bg-indigo-50 text-indigo-700':'border-slate-200 bg-white text-slate-600'}`}><Target className="mr-1 inline h-3.5 w-3.5"/>Personal</button><button type="button" onClick={()=>{setGoalScope('family');setSelectedGoalId('')}} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${goalScope==='family'?'border-indigo-600 bg-indigo-50 text-indigo-700':'border-slate-200 bg-white text-slate-600'}`}><Users className="mr-1 inline h-3.5 w-3.5"/>Family</button></div>{noGoals?<div className="rounded-lg border border-dashed border-slate-200 bg-white p-3 text-center"><p className="text-xs font-semibold text-slate-700">No {goalScope} goals yet</p><p className="mt-1 text-[11px] text-slate-500">Create a {goalScope} goal from Portfolio → Goals, then come back to tag this investment.</p></div>:<div><label htmlFor="select-goal" className="mb-1.5 block text-xs font-semibold text-slate-700">Select {goalScope} goal</label><select id="select-goal" value={selectedGoalId} onChange={e=>setSelectedGoalId(e.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"><option value="">Choose a goal…</option>{visibleGoals.map(goal=><option key={goal.id} value={goal.id}>{goal.name} · {money(goal.currentAmount)} / {money(goal.targetAmount)}</option>)}</select>{selectedGoal&&<div className="mt-2 rounded-lg bg-white border border-slate-200 p-2.5"><p className="text-xs font-semibold text-slate-800">{selectedGoal.name}</p><p className="mt-0.5 text-[11px] text-slate-500">{money(selectedGoal.currentAmount)} / {money(selectedGoal.targetAmount)} before this transaction</p><p className="mt-1 text-[11px] font-semibold text-indigo-600">After saving: {money(selectedGoal.currentAmount+(Number(amount)||0))}</p></div>}</div>}</div>}
+            </div>
+          </div>}
           <div><label htmlFor="select-modal-payment" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1"><CreditCard className="h-3.5 w-3.5 text-slate-400"/><span>Payment Method</span></label><select id="select-modal-payment" value={paymentMethod} onChange={e=>setPaymentMethod(e.target.value as PaymentMethod)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900"><option value="upi">UPI (GPay / PhonePe / Paytm / CRED)</option><option value="credit_card">Credit Card</option><option value="debit_card">Debit Card</option><option value="digital_wallet">Digital Wallet (Apple Pay / Google Pay)</option><option value="bank_transfer">Bank Transfer / Net Banking</option><option value="cash">Cash</option></select></div>
           <div><label htmlFor="textarea-modal-notes" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1"><AlignLeft className="h-3.5 w-3.5 text-slate-400"/><span>Notes (Optional)</span></label><textarea id="textarea-modal-notes" rows={2} placeholder="Add memo or itemized notes..." value={notes} onChange={e=>setNotes(e.target.value)} className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:border-slate-900 focus:outline-hidden focus:ring-1 focus:ring-slate-900 resize-none"/></div>
           <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100"><button id="btn-cancel-expense-modal" type="button" onClick={onClose} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-2xs">Cancel</button><button id="btn-submit-expense-modal" type="submit" className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-slate-800 transition active:scale-[0.99]">{editingExpense?'Save Changes':'Record Expense'}</button></div>
