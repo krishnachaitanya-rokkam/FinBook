@@ -62,7 +62,7 @@ export const GoalPlanningCards: React.FC<Props> = ({ goals, onEditGoal, onDelete
         <div className="rounded-lg bg-indigo-50 p-2.5"><p className="text-[10px] text-indigo-500">Required / month</p><p className="text-sm font-bold text-indigo-700 tabular-nums">{formatCurrency(p.required)}</p></div>
         <div className="rounded-lg bg-violet-50 p-2.5"><p className="text-[10px] text-violet-500">Return</p><p className="text-sm font-bold text-violet-700 tabular-nums">{annualReturn(p.goal)}%</p></div>
         <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Plan</p><p className="text-sm font-bold tabular-nums">{formatCurrency(p.goal.monthlyContribution)}</p></div>
-        <div className="rounded-lg bg-slate-50 p-2.5"><p className="text-[10px] text-slate-400">Projected</p><p className="text-sm font-bold tabular-nums">{formatCurrency(p.projected)}</p></div>
+        <div className={`rounded-lg p-2.5 ${p.onTrack ? 'bg-emerald-50' : 'bg-amber-50'}`}><p className={`text-[10px] ${p.onTrack ? 'text-emerald-600' : 'text-amber-600'}`}>Projected</p><p className={`text-sm font-bold tabular-nums ${p.onTrack ? 'text-emerald-700' : 'text-amber-700'}`}>{formatCurrency(p.projected)}</p></div>
       </div>
     </div>)}
   </section>;
