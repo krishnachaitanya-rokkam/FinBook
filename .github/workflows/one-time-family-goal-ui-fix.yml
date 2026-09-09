@@ -1,0 +1,54 @@
+name: One-time family goal UI fix
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/one-time-family-goal-ui-fix.yml']
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'Apply family goal UI cleanup'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Remove family goal creation from individual Goals
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          s = s.replace(", ShieldCheck", ", ShieldCheck")
+          s = s.replace("const [availableFamilies, setAvailableFamilies] = useState<{ id: string; name: string }[]>([]);\n", "")
+          start = s.index("  const syncFamilyGoal = async")
+          end = s.index("  const portfolioTotal =", start)
+          s = s[:start] + s[end:]
+          start = s.index("  useEffect(() => {\n    const uid = firebaseAuth.currentUser?.uid;")
+          end = s.index("  const portfolioTotal =", start)
+          s = s[:start] + s[end:]
+          s = s.replace("const emptyGoalDraft = { name: '', targetAmount: '', currentAmount: '', targetDate: '', monthlyContribution: '', type: 'savings' as 'savings' | 'investment', scope: 'personal' as 'personal' | 'family', familyId: '', familyName: '' };", "const emptyGoalDraft = { name: '', targetAmount: '', currentAmount: '', targetDate: '', monthlyContribution: '', type: 'savings' as 'savings' | 'investment' };")
+          s = s.replace("setGoalDraft({ name: goal.name, targetAmount: String(goal.targetAmount), currentAmount: String(goal.currentAmount), targetDate: goal.targetDate, monthlyContribution: String(goal.monthlyContribution), type: goal.type || 'savings', scope: goal.scope || 'personal', familyId: goal.familyId || '', familyName: goal.familyName || '' });", "setGoalDraft({ name: goal.name, targetAmount: String(goal.targetAmount), currentAmount: String(goal.currentAmount), targetDate: goal.targetDate, monthlyContribution: String(goal.monthlyContribution), type: goal.type || 'savings' });")
+          old = "  const selectedFamily = availableFamilies.find(f => f.id === goalDraft.familyId);\n  if (goalDraft.scope === 'family' && !selectedFamily) return;\n"
+          s = s.replace(old, "")
+          s = s.replace("    scope: goalDraft.scope,\n    familyId: goalDraft.scope === 'family' ? selectedFamily!.id : undefined,\n    familyName: goalDraft.scope === 'family' ? selectedFamily!.name : undefined\n", "    scope: 'personal'\n")
+          s = s.replace("  try {\n    await syncFamilyGoal(goal, previous?.familyId);\n  } catch (error) {\n    console.error('AHVIQ family goal sync failed', error);\n  } finally {\n    closeGoalEditor();\n  }", "  closeGoalEditor();")
+          s = s.replace(" if (goal.scope === 'family' && goal.familyId) await deleteDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id));", "")
+          p.write_text(s)
+      - name: Remove family scope controls from goal editor
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          s = s.replace("<label className=\"block text-xs font-semibold text-slate-700\">Scope</label>", "<label className=\"block text-xs font-semibold text-slate-700\">Goal scope</label>")
+          s = s.replace("scope: 'personal' as 'personal' | 'family'", "scope: 'personal'")
+          p.write_text(s)
+      - name: Commit and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManagerCore.tsx .github/workflows/one-time-family-goal-ui-fix.yml
+          git commit -m "Remove family goal creation from individual goals" || exit 0
+          git rm .github/workflows/one-time-family-goal-ui-fix.yml
+          git commit --amend --no-edit
+          git push
