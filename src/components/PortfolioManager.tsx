@@ -7,12 +7,14 @@ import { GoalPlanner } from './GoalPlanner';
 import { GoalPlanningCards } from './GoalPlanningCards';
 import { FamilyGoalContribution } from './FamilyGoalContribution';
 import { GoalIntelligence } from './GoalIntelligence';
+import { WealthAllocation } from './WealthAllocation';
 
 interface PortfolioManagerProps { config: PortfolioConfig; onSave: (config: PortfolioConfig) => Promise<void>; }
 
 export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSave }) => {
   const [forecastVisible, setForecastVisible] = useState(false);
   const [goalsVisible, setGoalsVisible] = useState(false);
+  const [netWorthVisible, setNetWorthVisible] = useState(false);
   const [goalView, setGoalView] = useState<'personal' | 'family'>('personal');
   const [createGoalOpen, setCreateGoalOpen] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -33,8 +35,10 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
     const check = () => {
       const activeButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Goals' && button.className.includes('bg-slate-900'));
       const activeForecast = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Forecast' && button.className.includes('bg-slate-900'));
+      const activeNetWorth = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Net Worth' && button.className.includes('bg-slate-900'));
       setGoalsVisible(Boolean(activeButton));
       setForecastVisible(Boolean(activeForecast));
+      setNetWorthVisible(Boolean(activeNetWorth));
     };
     check();
     const observer = new MutationObserver(check);
@@ -97,6 +101,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
 
   return <>
     <PortfolioManagerCore config={config} onSave={onSave} />
+    {netWorthVisible && <WealthAllocation config={config} />}
     {goalsVisible && <>
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <div className="flex w-full gap-1 rounded-xl bg-slate-50 p-1">
