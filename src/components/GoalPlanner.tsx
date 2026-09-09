@@ -2,9 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Target, ShieldCheck } from 'lucide-react';
 import { FinancialGoal } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
-import { GoalPlanningCards } from './GoalPlanningCards';
 
-interface GoalPlannerProps { goals: FinancialGoal[]; onReturnChange?: (annualReturn: number) => Promise<void> | void; }
+interface GoalPlannerProps { goals: FinancialGoal[]; onReturnChange?: (annualReturn: number) => Promise<void> | void; onEditGoal?: (goal: FinancialGoal) => void; onDeleteGoal?: (id: string) => void; }
 const DEFAULT_INVESTMENT_RETURN = 8;
 
 function monthsUntil(targetDate: string): number { const target = new Date(`${targetDate}T23:59:59`); if (Number.isNaN(target.getTime())) return 0; return Math.max(0, Math.ceil((target.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30.4375))); }
@@ -12,7 +11,7 @@ function monthlyRate(annualReturn: number): number { return Math.pow(1 + Math.ma
 function projectGoal(goal: FinancialGoal, months: number, annualReturn: number): number { const rate = monthlyRate(annualReturn); let value = Math.max(0, Number(goal.currentAmount) || 0); const contribution = Math.max(0, Number(goal.monthlyContribution) || 0); for (let i = 0; i < months; i += 1) value = value * (1 + rate) + contribution; return value; }
 function requiredMonthly(goal: FinancialGoal, months: number, annualReturn: number): number { const target = Math.max(0, Number(goal.targetAmount) || 0); const current = Math.max(0, Number(goal.currentAmount) || 0); if (months <= 0) return Math.max(0, target - current); if (target <= current) return 0; const rate = monthlyRate(annualReturn); if (rate === 0) return Math.ceil((target - current) / months / 100) * 100; const futureCurrent = current * Math.pow(1 + rate, months); const factor = (Math.pow(1 + rate, months) - 1) / rate; return Math.max(0, Math.ceil((target - futureCurrent) / factor / 100) * 100); }
 
-export const GoalPlanner: React.FC<GoalPlannerProps> = ({ goals, onReturnChange }) => {
+export const GoalPlanner: React.FC<GoalPlannerProps> = ({ goals, onReturnChange, onEditGoal, onDeleteGoal }) => {
   const savedInvestmentReturn = goals.find(goal => goal.type === 'investment')?.expectedAnnualReturn ?? DEFAULT_INVESTMENT_RETURN;
   const [investmentReturn, setInvestmentReturn] = useState(savedInvestmentReturn);
   useEffect(() => { setInvestmentReturn(savedInvestmentReturn); }, [savedInvestmentReturn]);
@@ -31,6 +30,6 @@ export const GoalPlanner: React.FC<GoalPlannerProps> = ({ goals, onReturnChange 
     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3"><div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[11px] text-slate-400">Goals on track</p><p className="mt-1 text-lg font-bold text-slate-900">{onTrackCount} / {plans.length}</p></div><div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[11px] text-slate-400">Recommended / month</p><p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{formatCurrency(requiredTotal)}</p></div><div className="rounded-xl border border-slate-200 bg-white p-3"><p className="text-[11px] text-slate-400">Currently planned</p><p className="mt-1 text-lg font-bold text-slate-900 tabular-nums">{formatCurrency(plannedTotal)}</p></div><div className={`rounded-xl border p-3 ${extraNeeded > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}`}><p className={`text-[11px] ${extraNeeded > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{extraNeeded > 0 ? 'Extra needed / month' : 'Plan is fully funded'}</p><p className={`mt-1 text-lg font-bold tabular-nums ${extraNeeded > 0 ? 'text-amber-800' : 'text-emerald-700'}`}>{formatCurrency(extraNeeded)}</p></div></div>
     <div className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-3"><Target className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500"/><p className="text-xs leading-5 text-slate-600"><strong className="text-slate-900">{onTrackCount} of {plans.length} goals are on track.</strong> Across all goals, AHVIQ calculates a recommended {formatCurrency(requiredTotal)} per month based on target dates, current progress and the selected return assumption{investmentCount ? ` for ${investmentCount} investment goal${investmentCount > 1 ? 's' : ''}` : ''}. {totalGap > 0 ? `The projected shortfall is ${formatCurrency(totalGap)}.` : 'The current plans are projected to reach their targets.'}</p></div>
     <div className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/70 px-3 py-3"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600"/><p className="text-xs leading-5 text-slate-600"><strong className="text-emerald-700">Planning only.</strong> The selected investment return is an illustrative assumption and is used consistently for compounding, required monthly contribution and projection. Savings goals use 0%. Returns are not guaranteed and this does not constitute investment advice.</p></div><p className="text-[10px] text-slate-400">Required monthly assumes contributions at the end of each month and uses the selected annual return for investment goals.</p>
-    <div className="border-t border-indigo-100 pt-4"><GoalPlanningCards goals={goals} /></div>
+    
   </div></section>;
 };

@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { AlertTriangle, CheckCircle2, Target } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Pencil, Target, Trash2 } from 'lucide-react';
 import { FinancialGoal } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 
-interface Props { goals: FinancialGoal[]; }
+interface Props { goals: FinancialGoal[]; onEditGoal?: (goal: FinancialGoal) => void; onDeleteGoal?: (id: string) => void; }
 
 const monthsUntil = (date: string) => {
   const target = new Date(`${date}T23:59:59`);
@@ -34,7 +34,7 @@ const project = (goal: FinancialGoal, months: number) => {
   return value;
 };
 
-export const GoalPlanningCards: React.FC<Props> = ({ goals }) => {
+export const GoalPlanningCards: React.FC<Props> = ({ goals, onEditGoal, onDeleteGoal }) => {
   const plans = useMemo(() => goals.map(goal => {
     const target = Math.max(0, Number(goal.targetAmount) || 0);
     const current = Math.max(0, Number(goal.currentAmount) || 0);
@@ -54,7 +54,7 @@ export const GoalPlanningCards: React.FC<Props> = ({ goals }) => {
           <div className="flex flex-wrap items-center gap-2"><Target className="h-5 w-5 text-indigo-500" /><p className="font-bold text-slate-900 truncate">{p.goal.name}</p><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${p.goal.type === 'investment' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{p.goal.type === 'investment' ? 'INVESTMENT' : 'SAVINGS'}</span></div>
           <p className="mt-1 text-xs sm:text-sm text-slate-500">{p.months} months remaining · Target {formatCurrency(p.target)} · Return {p.goal.type === 'investment' ? `${annualReturn(p.goal)}%` : '0%'}</p>
         </div>
-        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? 'ON TRACK' : 'NEEDS ATTENTION'}</span>
+        <div className="flex shrink-0 items-center gap-2"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold ${p.onTrack ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{p.onTrack ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{p.onTrack ? 'ON TRACK' : 'NEEDS ATTENTION'}</span>{onEditGoal && <button type="button" onClick={() => onEditGoal(p.goal)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600" aria-label={`Edit ${p.goal.name}`} title="Edit goal"><Pencil className="h-4 w-4" /></button>}{onDeleteGoal && <button type="button" onClick={() => onDeleteGoal(p.goal.id)} className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label={`Delete ${p.goal.name}`} title="Delete goal"><Trash2 className="h-4 w-4" /></button>}</div>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-500" style={{ width: `${p.progress}%` }} /></div>
       <div className="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-2">
