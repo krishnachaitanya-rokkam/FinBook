@@ -11,7 +11,7 @@ const ASSET_TYPES = ['Cash', 'Bank account', 'Property', 'Vehicle', 'Gold', 'Oth
 const LIABILITY_TYPES = ['Home loan', 'Personal loan', 'Car loan', 'Credit card', 'Other debt'];
 const emptyPortfolioDraft = { label: '', amount: '' };
 const emptyNetWorthDraft = { label: '', amount: '', kind: 'asset' as 'asset' | 'liability', type: 'Cash' };
-const emptyGoalDraft = { name: '', targetAmount: '', currentAmount: '', targetDate: '', monthlyContribution: '', type: 'savings' as 'savings' | 'investment', scope: 'personal' as 'personal' | 'family', familyId: '', familyName: '' };
+const emptyGoalDraft = { name: '', targetAmount: '', currentAmount: '', targetDate: '', monthlyContribution: '', type: 'savings' as 'savings' | 'investment' };
 function makeId(prefix: string, label: string) { const slug = label.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); return `${prefix}-${slug || 'item'}-${Date.now()}`; }
 const TabButton = ({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: React.ElementType; children: React.ReactNode }) => <button type="button" onClick={onClick} className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs sm:text-sm font-semibold transition whitespace-nowrap ${active ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}><Icon className="h-4 w-4 shrink-0" />{children}</button>;
 
@@ -20,33 +20,8 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const [isPortfolioOpen, setIsPortfolioOpen] = useState(false); const [isNetWorthOpen, setIsNetWorthOpen] = useState(false); const [isGoalOpen, setIsGoalOpen] = useState(false);
   const [portfolioDraft, setPortfolioDraft] = useState(emptyPortfolioDraft); const [netWorthDraft, setNetWorthDraft] = useState(emptyNetWorthDraft); const [goalDraft, setGoalDraft] = useState(emptyGoalDraft);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null); const [editingNetWorthId, setEditingNetWorthId] = useState<string | null>(null); const [editingGoalId, setEditingGoalId] = useState<string | null>(null); const [saving, setSaving] = useState(false);
-  const [availableFamilies, setAvailableFamilies] = useState<{ id: string; name: string }[]>([]);
-  const [forecastPeriod, setForecastPeriod] = useState<1 | 3 | 5>(5); const [forecastRate, setForecastRate] = useState<number>(10); const [monthlyContribution, setMonthlyContribution] = useState<number | null>(null);
+    const [forecastPeriod, setForecastPeriod] = useState<1 | 3 | 5>(5); const [forecastRate, setForecastRate] = useState<number>(10); const [monthlyContribution, setMonthlyContribution] = useState<number | null>(null);
   const fields = config.fields || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];
-  const syncFamilyGoal = async (goal: FinancialGoal, previousFamilyId?: string) => {
-    const oldFamilyId = previousFamilyId || '';
-    if (oldFamilyId && (goal.scope !== 'family' || goal.familyId !== oldFamilyId)) {
-      await deleteDoc(doc(firestore, 'families', oldFamilyId, 'goals', goal.id));
-    }
-    if (goal.scope === 'family' && goal.familyId) {
-      await setDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id), {
-        name: goal.name, targetAmount: goal.targetAmount, currentAmount: goal.currentAmount, targetDate: goal.targetDate, monthlyContribution: goal.monthlyContribution,
-        type: goal.type, scope: 'family', familyId: goal.familyId, familyName: goal.familyName || '', createdBy: firebaseAuth.currentUser?.uid || '', createdAt: Date.now(), updatedAt: Date.now()
-      }, { merge: true });
-    }
-  };
-  useEffect(() => {
-    const uid = firebaseAuth.currentUser?.uid;
-    if (!uid) return;
-    return onSnapshot(doc(firestore, 'users', uid, 'family', 'link'), linkSnap => {
-      const familyId = String(linkSnap.data()?.familyId || '');
-      if (!familyId) { setAvailableFamilies([]); return; }
-      return onSnapshot(doc(firestore, 'families', familyId), familySnap => {
-        const data = familySnap.data();
-        setAvailableFamilies(data?.name ? [{ id: familyId, name: String(data.name) }] : []);
-      });
-    });
-  }, []);
   const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);
   const extraAssets = useMemo(() => netWorthItems.filter(item => item.kind === 'asset').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
   const liabilities = useMemo(() => netWorthItems.filter(item => item.kind === 'liability').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
@@ -70,7 +45,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const saveNetWorthItem = async (event: React.FormEvent) => { event.preventDefault(); const label = netWorthDraft.label.trim(); const amount = Number(netWorthDraft.amount); if (!label || !Number.isFinite(amount) || amount < 0) return; const item: NetWorthItem = { id: editingNetWorthId || makeId(netWorthDraft.kind, label), label, amount, kind: netWorthDraft.kind, type: netWorthDraft.type }; const nextItems = editingNetWorthId ? netWorthItems.map(existing => existing.id === editingNetWorthId ? item : existing) : [...netWorthItems, item]; await saveConfig({ ...config, netWorthItems: nextItems }); closeNetWorthEditor(); };
   const removeNetWorth = async (id: string) => { const item = netWorthItems.find(entry => entry.id === id); if (!item || !window.confirm(`Remove ${item.label} from net worth?`)) return; await saveConfig({ ...config, netWorthItems: netWorthItems.filter(entry => entry.id !== id) }); };
 
-  const openEditGoal = (goal: FinancialGoal) => { setEditingGoalId(goal.id); setGoalDraft({ name: goal.name, targetAmount: String(goal.targetAmount), currentAmount: String(goal.currentAmount), targetDate: goal.targetDate, monthlyContribution: String(goal.monthlyContribution), type: goal.type || 'savings', scope: goal.scope || 'personal', familyId: goal.familyId || '', familyName: goal.familyName || '' }); setIsGoalOpen(true); };
+  const openEditGoal = (goal: FinancialGoal) => { setEditingGoalId(goal.id); setGoalDraft({ name: goal.name, targetAmount: String(goal.targetAmount), currentAmount: String(goal.currentAmount), targetDate: goal.targetDate, monthlyContribution: String(goal.monthlyContribution), type: goal.type || 'savings' }); setIsGoalOpen(true); };
   const saveGoal = async (event: React.FormEvent) => {
   event.preventDefault();
   const name = goalDraft.name.trim();
@@ -78,8 +53,6 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const currentAmount = Number(goalDraft.currentAmount || 0);
   const monthlyContribution = Number(goalDraft.monthlyContribution || 0);
   if (!name || !Number.isFinite(targetAmount) || targetAmount <= 0 || !Number.isFinite(currentAmount) || currentAmount < 0 || !goalDraft.targetDate || !Number.isFinite(monthlyContribution) || monthlyContribution < 0) return;
-  const selectedFamily = availableFamilies.find(f => f.id === goalDraft.familyId);
-  if (goalDraft.scope === 'family' && !selectedFamily) return;
   const previous = editingGoalId ? goals.find(existing => existing.id === editingGoalId) : undefined;
   const goal: FinancialGoal = {
     id: editingGoalId || makeId('goal', name),
@@ -89,21 +62,13 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
     targetDate: goalDraft.targetDate,
     monthlyContribution,
     type: goalDraft.type,
-    scope: goalDraft.scope,
-    familyId: goalDraft.scope === 'family' ? selectedFamily!.id : undefined,
-    familyName: goalDraft.scope === 'family' ? selectedFamily!.name : undefined
+    scope: 'personal'
   };
   const nextGoals = editingGoalId ? goals.map(existing => existing.id === editingGoalId ? goal : existing) : [...goals, goal];
   await saveConfig({ ...config, goals: nextGoals });
-  try {
-    await syncFamilyGoal(goal, previous?.familyId);
-  } catch (error) {
-    console.error('AHVIQ family goal sync failed', error);
-  } finally {
-    closeGoalEditor();
-  }
+  closeGoalEditor();
 };
-  const removeGoal = async (id: string) => { const goal = goals.find(item => item.id === id); if (!goal || !window.confirm(`Delete the ${goal.name} goal?`)) return; await saveConfig({ ...config, goals: goals.filter(item => item.id !== id) }); if (goal.scope === 'family' && goal.familyId) await deleteDoc(doc(firestore, 'families', goal.familyId, 'goals', goal.id)); };
+  const removeGoal = async (id: string) => { const goal = goals.find(item => item.id === id); if (!goal || !window.confirm(`Delete the ${goal.name} goal?`)) return; await saveConfig({ ...config, goals: goals.filter(item => item.id !== id) }); };
 
   const forecast = useMemo(() => {
     const otherNetWorth = netWorth - portfolioTotal;
