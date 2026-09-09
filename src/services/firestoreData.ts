@@ -1,6 +1,6 @@
 import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, runTransaction, setDoc } from 'firebase/firestore';
 import { Expense, Income, MonthBudgetConfig, InvestmentType } from '../types';
-import { firestore } from './firebase';
+import { firebaseAuth, firestore } from './firebase';
 
 export interface InvestmentMapping { id: InvestmentType; label: string; color: string; }
 export const INVESTMENT_MAPPINGS: InvestmentMapping[] = [
@@ -27,6 +27,31 @@ type GoalContributionDelta = { goalId: string; scope: 'personal' | 'family'; fam
 function goalContributionDelta(expense: Expense | undefined, direction: 1 | -1): GoalContributionDelta | null { if (!expense?.goalId) return null; return { goalId: expense.goalId, scope: expense.goalScope || 'personal', familyId: expense.goalFamilyId, delta: (Number(expense.amount) || 0) * direction }; }
 function updatePortfolioGoals(data: any, deltas: GoalContributionDelta[]) { const goals = Array.isArray(data?.goals) ? data.goals.map((goal: any) => ({ ...goal })) : []; deltas.filter(delta => delta.scope === 'personal' && delta.delta !== 0).forEach(delta => { const index = goals.findIndex((goal: any) => goal.id === delta.goalId); if (index >= 0) goals[index] = { ...goals[index], currentAmount: Math.max(0, (Number(goals[index].currentAmount) || 0) + delta.delta), updatedAt: Date.now() }; }); return goals; }
 function familyGoalRef(familyId: string, goalId: string) { return doc(firestore, 'families', familyId, 'goals', goalId); }
+function familyContributorName(uid: string) { const user = firebaseAuth.currentUser; return user?.displayName || user?.email?.split('@')[0] || (uid === user?.uid ? 'You' : 'Family member'); }
+function updateFamilyGoalData(data: any, delta: GoalContributionDelta, uid: string, fallbackExpense?: Expense) {
+  const contributions = { ...(data?.contributions || {}) } as Record<string, number>;
+  contributions[uid] = Math.max(0, (Number(contributions[uid]) || 0) + delta.delta);
+  const contributorNames = { ...(data?.contributorNames || {}) } as Record<string, string>;
+  contributorNames[uid] = contributorNames[uid] || familyContributorName(uid);
+  const currentAmount = Math.max(0, Object.values(contributions).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0));
+  const fallbackAmount = Math.max(0, Number(fallbackExpense?.amount) || 0);
+  return {
+    ...(data || {}),
+    name: data?.name || fallbackExpense?.goalName || delta.goalId,
+    targetAmount: Number(data?.targetAmount) > 0 ? Number(data.targetAmount) : Math.max(fallbackAmount, 1),
+    targetDate: data?.targetDate || fallbackExpense?.goalTargetDate || '',
+    monthlyContribution: Number(data?.monthlyContribution) || Number(fallbackExpense?.goalMonthlyContribution) || 0,
+    familyId: data?.familyId || fallbackExpense?.goalFamilyId,
+    familyName: data?.familyName || fallbackExpense?.goalFamilyName || '',
+    scope: 'family',
+    createdBy: data?.createdBy || uid,
+    createdAt: data?.createdAt || Date.now(),
+    currentAmount,
+    contributions,
+    contributorNames,
+    updatedAt: Date.now(),
+  };
+}
 async function processDueRecurringItems(uid: string) { try { const recurringSnap = await getDocs(collection(userRoot(uid), 'recurring')); const today = new Date(); await Promise.all(recurringSnap.docs.map(async (snap) => { const item = { id: snap.id, ...snap.data() } as RecurringItem; const dueDate = getDueDate(item, today); if (!dueDate) return; const occurrenceId = `recurring-${item.id}-${dueDate}`; const targetCollection = item.type === 'income' ? 'incomes' : 'expenses'; const ref = doc(userRoot(uid), targetCollection, occurrenceId); const createdAt = Date.now(); if (item.type === 'income') { const existing = await getDoc(ref); if (existing.exists()) return; const income: Income = { id: occurrenceId, title: item.title, amount: item.amount, date: dueDate, source: 'Recurring', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; await setDoc(ref, stripUndefined(income), { merge: false }); return; } const title = item.title.toLowerCase(); const categoryId: Expense['categoryId'] = item.type === 'bill' ? 'utilities' : /(sip|mutual fund|investment|stocks|nps|ppf|epf)/i.test(title) ? 'investment' : 'other'; const investmentType: InvestmentType | undefined = categoryId === 'investment' ? /ppf/i.test(title) ? 'ppf' : /mutual fund|sip/i.test(title) ? 'mutual_funds' : /stocks?/i.test(title) ? 'stocks' : /nps/i.test(title) ? 'nps' : /epf/i.test(title) ? 'epf' : 'other_investment' : undefined; const expense: Expense = { id: occurrenceId, title: item.title, amount: item.amount, date: dueDate, categoryId, ...(investmentType ? { investmentType } : {}), paymentMethod: 'bank_transfer', notes: `Automatically recorded from recurring item: ${item.title}`, createdAt }; await runTransaction(firestore, async transaction => { const occurrenceSnap = await transaction.get(ref); if (occurrenceSnap.exists()) return; transaction.set(ref, stripUndefined(expense)); }); })); } catch (error) { console.error('Recurring auto-record error:', error); } }
 export function subscribeToUserData(uid: string, onChange: (data: UserData) => void, onError?: (error: Error) => void): () => void { const cached = readCache(uid); if (cached) onChange(cached); let expenses: Expense[] = cached?.expenses || []; let incomes: Income[] = cached?.incomes || []; let budgets: Record<string, MonthBudgetConfig> = cached?.budgets || {}; let expensesReady = false, incomesReady = false, budgetsReady = false; let recurringProcessed = false; const publish = () => { if (!expensesReady || !incomesReady || !budgetsReady) return; const data: UserData = { expenses: expenses.map(normalizeExpense).sort((a,b)=>b.date.localeCompare(a.date)), incomes: incomes.map(normalizeIncome).sort((a,b)=>b.date.localeCompare(a.date)), budgets: stripUndefined(budgets) }; writeCache(uid, data); onChange(data); if (!recurringProcessed) { recurringProcessed = true; void processDueRecurringItems(uid); } }; const unsubscribeExpenses = onSnapshot(collection(userRoot(uid), 'expenses'), snapshot => { expenses = snapshot.docs.map(d => normalizeExpense(d.data() as Expense)).sort((a,b)=>b.date.localeCompare(a.date)); expensesReady = true; publish(); }, error => onError?.(error)); const unsubscribeIncomes = onSnapshot(collection(userRoot(uid), 'incomes'), snapshot => { incomes = snapshot.docs.map(d => normalizeIncome(d.data() as Income)).sort((a,b)=>b.date.localeCompare(a.date)); incomesReady = true; publish(); }, error => onError?.(error)); const unsubscribeBudgets = onSnapshot(collection(userRoot(uid), 'budgets'), snapshot => { budgets = {}; snapshot.docs.forEach(d => { budgets[d.id] = d.data() as MonthBudgetConfig; }); budgetsReady = true; publish(); }, error => onError?.(error)); return () => { unsubscribeExpenses(); unsubscribeIncomes(); unsubscribeBudgets(); }; }
 export async function saveExpense(uid: string, expense: Expense, previousExpense?: Expense) {
@@ -51,7 +76,11 @@ export async function saveExpense(uid: string, expense: Expense, previousExpense
       const data = portfolioSnap.exists() ? portfolioSnap.data() : {};
       transaction.set(portfolioRef(uid), { ...data, ...(investmentDeltas.length ? { fields: updatePortfolioFields(data, investmentDeltas) } : {}), ...(goalDeltas.some(delta => delta.scope === 'personal') ? { goals: updatePortfolioGoals(data, goalDeltas) } : {}) }, { merge: true });
     }
-    familySnaps.forEach((snap, index) => { if (!snap.exists()) return; const { delta, ref } = familyRefs[index]; const data = snap.data() || {}; const nextAmount = Math.max(0, (Number(data.currentAmount) || 0) + delta.delta); const contributions = { ...(data.contributions || {}) }; contributions[uid] = Math.max(0, (Number(contributions[uid]) || 0) + delta.delta); transaction.set(ref, { ...data, currentAmount: nextAmount, contributions, updatedAt: Date.now() }, { merge: true }); });
+    familySnaps.forEach((snap, index) => {
+      const { delta, ref } = familyRefs[index];
+      const data = snap.exists() ? snap.data() : {};
+      transaction.set(ref, updateFamilyGoalData(data, delta, uid, expense), { merge: true });
+    });
   });
 }
 export async function removeExpense(uid: string, id: string, expense?: Expense) {
@@ -61,7 +90,7 @@ export async function removeExpense(uid: string, id: string, expense?: Expense) 
     const portfolioSnap = (investmentDelta || goalDelta?.scope === 'personal') ? await transaction.get(portfolioRef(uid)) : null;
     const familyRef = goalDelta?.scope === 'family' && goalDelta.familyId ? familyGoalRef(goalDelta.familyId, goalDelta.goalId) : null; const familySnap = familyRef ? await transaction.get(familyRef) : null;
     if (portfolioSnap) { const data = portfolioSnap.exists() ? portfolioSnap.data() : {}; transaction.set(portfolioRef(uid), { ...data, ...(investmentDelta ? { fields: updatePortfolioFields(data, [investmentDelta]) } : {}), ...(goalDelta?.scope === 'personal' ? { goals: updatePortfolioGoals(data, [goalDelta]) } : {}) }, { merge: true }); }
-    if (familyRef && familySnap?.exists()) { const data = familySnap.data() || {}; const contributions = { ...(data.contributions || {}) }; contributions[uid] = Math.max(0, (Number(contributions[uid]) || 0) + (goalDelta?.delta || 0)); transaction.set(familyRef, { ...data, currentAmount: Math.max(0, (Number(data.currentAmount) || 0) + (goalDelta?.delta || 0)), contributions, updatedAt: Date.now() }, { merge: true }); }
+    if (familyRef) { const data = familySnap?.exists() ? familySnap.data() : {}; transaction.set(familyRef, updateFamilyGoalData(data, goalDelta!, uid, oldExpense), { merge: true }); }
     transaction.delete(expenseRef);
   });
 }
