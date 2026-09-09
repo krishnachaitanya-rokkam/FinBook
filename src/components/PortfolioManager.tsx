@@ -4,6 +4,7 @@ import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 import { PortfolioManager as PortfolioManagerCore } from './PortfolioManagerCore';
 import { GoalPlanner } from './GoalPlanner';
+import { GoalPlanningCards } from './GoalPlanningCards';
 import { FamilyGoalContribution } from './FamilyGoalContribution';
 import { GoalIntelligence } from './GoalIntelligence';
 
@@ -110,7 +111,8 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
             <button type="button" onClick={openCreateGoal} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-indigo-700"><Plus className="h-4 w-4" /> Create Goal</button>
           </div>
         </section>
-        <GoalPlanner goals={goals} onReturnChange={syncGoalReturn} onEditGoal={openEditGoal} onDeleteGoal={removeGoal} />
+        <GoalPlanningCards goals={goals} onEditGoal={openEditGoal} onDeleteGoal={removeGoal} />
+        <GoalPlanner goals={goals} onReturnChange={syncGoalReturn} />
         <GoalIntelligence goals={goals.map(goal => ({ ...goal, scope: 'personal' as const }))} />
       </>}
       {goalView === 'family' && <>
