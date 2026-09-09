@@ -15,9 +15,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == request.auth.uid;
     }
 
-    // Joining users must be able to read the family document inside the
-    // transaction before they become a member. The invite itself remains
-    // protected by the signed-in-user check and the join transaction.
     function isValidFamilyJoin(familyId) {
       let code = request.resource.data.acceptedInviteCode;
       let invitePath = /databases/$(database)/documents/familyInvites/$(code);
@@ -61,6 +58,12 @@ service cloud.firestore {
       allow read: if isFamilyMember(familyId);
       allow create, update: if isFamilyMember(familyId) && request.auth.uid == memberId;
       allow delete: if isFamilyOwner(familyId) || (isFamilyMember(familyId) && request.auth.uid == memberId);
+    }
+
+    match /families/{familyId}/goals/{goalId} {
+      // Family goals are intentionally shared: any family member can view,
+      // create, update, or remove a goal from the shared family dashboard.
+      allow read, create, update, delete: if isFamilyMember(familyId);
     }
 
     match /familyInvites/{inviteId} {
