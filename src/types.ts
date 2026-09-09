@@ -37,6 +37,10 @@ export interface Expense {
   goalName?: string;
   goalScope?: 'personal' | 'family';
   goalFamilyId?: string;
+  goalTargetAmount?: number;
+  goalTargetDate?: string;
+  goalMonthlyContribution?: number;
+  goalFamilyName?: string;
   createdAt: number;
 }
 
