@@ -4,7 +4,6 @@ import { PortfolioConfig } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 import { PortfolioManager as PortfolioManagerCore } from './PortfolioManagerCore';
 import { GoalPlanner } from './GoalPlanner';
-import { FamilyGoalContribution } from './FamilyGoalContribution';
 
 interface PortfolioManagerProps { config: PortfolioConfig; onSave: (config: PortfolioConfig) => Promise<void>; }
 
@@ -53,7 +52,6 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
 
   return <>
     <PortfolioManagerCore config={config} onSave={onSave} />
-    <FamilyGoalContribution />
     {goalsVisible && <GoalPlanner goals={goals} />}
     {forecastVisible && <section className="mt-5 rounded-2xl border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/60 to-cyan-50/60 p-4 sm:p-5 shadow-sm">
       <div className="flex flex-col gap-4">
