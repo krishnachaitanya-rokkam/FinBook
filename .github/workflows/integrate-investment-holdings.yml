@@ -1,0 +1,148 @@
+name: Integrate investment transactions with holdings
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch AHVIQ investment model
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f'Missing patch anchor: {label} in {path}')
+              p.write_text(s.replace(old, new, 1))
+              print(f'Patched {path}: {label}')
+
+          # 1) Transactions can explicitly point to the holding they funded.
+          replace_once(
+              'src/types.ts',
+              "  investmentType?: InvestmentType;\n",
+              "  investmentType?: InvestmentType;\n  holdingId?: string;\n",
+              'Expense holdingId'
+          )
+
+          # 2) Expense modal loads holdings, preserves the link when editing, and requires
+          #    a holding for mutual-fund/stock investment transactions.
+          p = Path('src/components/ExpenseModal.tsx')
+          s = p.read_text()
+          s = s.replace(
+              "import { Expense, CategoryId, PaymentMethod, InvestmentType } from '../types';",
+              "import { Expense, CategoryId, PaymentMethod, InvestmentType } from '../types';\nimport { InvestmentHolding } from '../services/portfolioService';",
+              1
+          )
+          s = s.replace(
+              "  const [personalGoals, setPersonalGoals] = useState<GoalOption[]>([]);",
+              "  const [personalGoals, setPersonalGoals] = useState<GoalOption[]>([]);\n  const [holdings, setHoldings] = useState<InvestmentHolding[]>([]);\n  const [selectedHoldingId, setSelectedHoldingId] = useState('');",
+              1
+          )
+          s = s.replace(
+              "      setPersonalGoals([]);\n      setFamilyGoals([]);\n      return;",
+              "      setPersonalGoals([]);\n      setFamilyGoals([]);\n      setHoldings([]);\n      setSelectedHoldingId('');\n      return;",
+              1
+          )
+          s = s.replace(
+              "      const goals = Array.isArray(snap.data()?.goals) ? snap.data()?.goals : [];\n      setPersonalGoals(goals.filter((goal: any) => (goal.scope || 'personal') === 'personal').map((goal: any) => ({",
+              "      const snapshotData = snap.data() || {};\n      const goals = Array.isArray(snapshotData.goals) ? snapshotData.goals : [];\n      const savedHoldings = Array.isArray(snapshotData.holdings) ? snapshotData.holdings : [];\n      setHoldings(savedHoldings.map((item: any) => ({ id: String(item.id), assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: String(item.name || ''), schemeCode: item.schemeCode ? String(item.schemeCode) : undefined, units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: Number(item.currentValue) || ((Number(item.units) || 0) * (Number(item.currentPrice) || 0)), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), navDate: item.navDate ? String(item.navDate) : undefined, source: item.source === 'automatic' ? 'automatic' : 'manual', goalId: item.goalId ? String(item.goalId) : undefined })));\n      setPersonalGoals(goals.filter((goal: any) => (goal.scope || 'personal') === 'personal').map((goal: any) => ({",
+              1
+          )
+          s = s.replace(
+              "      setTitle(editingExpense.title); setAmount(editingExpense.amount.toString()); setCategoryId(editingExpense.categoryId);\n      setInvestmentType(editingExpense.investmentType || 'mutual_funds'); setDate(editingExpense.date);",
+              "      setTitle(editingExpense.title); setAmount(editingExpense.amount.toString()); setCategoryId(editingExpense.categoryId);\n      setInvestmentType(editingExpense.investmentType || 'mutual_funds'); setSelectedHoldingId(editingExpense.holdingId || ''); setDate(editingExpense.date);",
+              1
+          )
+          s = s.replace(
+              "      setTitle(''); setAmount(''); setCategoryId('groceries'); setInvestmentType('mutual_funds');\n      setDate(defaultDate || getTodayDateString());",
+              "      setTitle(''); setAmount(''); setCategoryId('groceries'); setInvestmentType('mutual_funds'); setSelectedHoldingId('');\n      setDate(defaultDate || getTodayDateString());",
+              1
+          )
+          anchor = "  if (!isOpen) return null;\n  const allCategories = [...CATEGORIES, ...customCategories];"
+          replacement = "  useEffect(() => {\n    if (categoryId !== 'investment' || !['mutual_funds', 'stocks'].includes(investmentType)) { setSelectedHoldingId(''); return; }\n    const matching = holdings.filter(item => (investmentType === 'mutual_funds' ? item.assetType === 'mutual-fund' : item.assetType === 'stock'));\n    if (matching.length === 1 && !selectedHoldingId) setSelectedHoldingId(matching[0].id);\n    if (selectedHoldingId && !matching.some(item => item.id === selectedHoldingId)) setSelectedHoldingId('');\n  }, [categoryId, investmentType, holdings, selectedHoldingId]);\n\n  if (!isOpen) return null;\n  const allCategories = [...CATEGORIES, ...customCategories];"
+          if anchor not in s: raise SystemExit('Missing patch anchor: holding auto-select')
+          s = s.replace(anchor, replacement, 1)
+          s = s.replace(
+              "    if (categoryId === 'investment' && goalEnabled && !selectedGoal) {",
+              "    if (categoryId === 'investment' && ['mutual_funds', 'stocks'].includes(investmentType) && !selectedHoldingId) {\n      setError(holdings.some(item => investmentType === 'mutual_funds' ? item.assetType === 'mutual-fund' : item.assetType === 'stock') ? 'Select the investment holding this transaction belongs to.' : 'Add a matching holding from Portfolio → Portfolio first, then record this investment transaction.'); return;\n    }\n    if (categoryId === 'investment' && goalEnabled && !selectedGoal) {",
+              1
+          )
+          s = s.replace(
+              "      goalId: selectedGoal.id, goalName: selectedGoal.name, goalScope: selectedGoal.scope, goalFamilyId: selectedGoal.familyId,\n    } : {};",
+              "      goalId: selectedGoal.id, goalName: selectedGoal.name, goalScope: selectedGoal.scope, goalFamilyId: selectedGoal.familyId,\n    } : {};\n    const holdingData = categoryId === 'investment' && selectedHoldingId ? { holdingId: selectedHoldingId } : {};",
+              1
+          )
+          s = s.replace(
+              "    onSave({ title: trimmedTitle, amount: Math.round(numAmount * 100) / 100, categoryId, ...(categoryId === 'investment' ? { investmentType } : {}), ...goalData, date, paymentMethod, notes: notes.trim() }, editingExpense ? editingExpense.id : undefined);",
+              "    onSave({ title: trimmedTitle, amount: Math.round(numAmount * 100) / 100, categoryId, ...(categoryId === 'investment' ? { investmentType } : {}), ...holdingData, ...goalData, date, paymentMethod, notes: notes.trim() }, editingExpense ? editingExpense.id : undefined);",
+              1
+          )
+          ui_anchor = "            <div className=\"rounded-xl border border-slate-200 bg-slate-50/70 p-3\"><div className=\"flex items-center justify-between gap-3\"><div><div className=\"flex items-center gap-2\"><Target className=\"h-4 w-4 text-indigo-600\"/><span className=\"text-xs font-bold text-slate-800\">Goal contribution</span>"
+          ui_new = "            {(investmentType === 'mutual_funds' || investmentType === 'stocks') && <div className=\"rounded-xl border border-indigo-100 bg-indigo-50/60 p-3\"><div className=\"flex items-center justify-between gap-3\"><div><p className=\"text-xs font-bold text-slate-800\">Investment holding</p><p className=\"mt-0.5 text-[11px] text-slate-500\">This transaction increases invested amount and units in the selected holding. Current value comes from its latest price/NAV.</p></div><span className=\"text-[10px] font-semibold uppercase tracking-wider text-indigo-600\">Linked</span></div><select value={selectedHoldingId} onChange={e=>setSelectedHoldingId(e.target.value)} className=\"mt-3 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-hidden\"><option value=\"\">Select holding</option>{holdings.filter(item=>investmentType==='mutual_funds'?item.assetType==='mutual-fund':item.assetType==='stock').map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><p className=\"mt-1.5 text-[11px] text-slate-400\">No holding? Add it in Portfolio → Portfolio → Investment holdings.</p></div>}\n\n            <div className=\"rounded-xl border border-slate-200 bg-slate-50/70 p-3\"><div className=\"flex items-center justify-between gap-3\"><div><div className=\"flex items-center gap-2\"><Target className=\"h-4 w-4 text-indigo-600\"/><span className=\"text-xs font-bold text-slate-800\">Goal contribution</span>"
+          if ui_anchor not in s: raise SystemExit('Missing patch anchor: holding selector UI')
+          s = s.replace(ui_anchor, ui_new, 1)
+          p.write_text(s)
+          print('Patched ExpenseModal.tsx')
+
+          # 3) Portfolio cards for Mutual Funds/Stocks are now views of holdings.
+          #    Other investment buckets remain manually/transaction tracked.
+          p = Path('src/components/PortfolioManagerCore.tsx')
+          s = p.read_text()
+          old = "  const fields = config.fields || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];\n  const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);"
+          new = "  const rawFields = config.fields || []; const holdings = config.holdings || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];\n  const fields = useMemo(() => rawFields.map(field => {\n    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;\n    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';\n    const linkedValue = holdings.filter(item => item.assetType === assetType).reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0);\n    return holdings.some(item => item.assetType === assetType) ? { ...field, amount: linkedValue } : field;\n  }), [rawFields, holdings]);\n  const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);"
+          if old not in s: raise SystemExit('Missing patch anchor: portfolio derived fields')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          print('Patched PortfolioManagerCore.tsx')
+
+          # 4) FinBookApp: linked investment transactions update holdings (invested amount + units),
+          #    and deletion/editing reverses the previous transaction contribution. The card then
+          #    reads currentValue from holdings, so market/NAV changes do not get overwritten by cash-flow totals.
+          p = Path('src/FinBookApp.tsx')
+          s = p.read_text()
+          s = s.replace(
+              "import { subscribeToPortfolio, savePortfolio, DEFAULT_PORTFOLIO_FIELDS, PortfolioConfig } from './services/portfolioService';",
+              "import { subscribeToPortfolio, savePortfolio, DEFAULT_PORTFOLIO_FIELDS, PortfolioConfig, InvestmentHolding } from './services/portfolioService';",
+              1
+          )
+          old_save = " const save=async(data:Omit<Expense,'id'|'createdAt'>,id?:string)=>{if(!user)return;const existing=id?expenses.find(e=>e.id===id):undefined;const item:Expense=id&&existing?{...existing,...data,createdAt:existing.createdAt}:{...data,id:`exp-${Date.now()}-${crypto.randomUUID().slice(0,8)}`,createdAt:Date.now()};setExpenses(prev=>id?prev.map(e=>e.id===id?item:e):[item,...prev]);try{await saveExpense(user.id,item);toast(id?'Transaction updated':'Transaction saved to cloud');}catch(error:any){toast(`Could not save to cloud: ${error?.message||'Please try again'}`);}};"
+          new_save = " const save=async(data:Omit<Expense,'id'|'createdAt'>,id?:string)=>{if(!user)return;const existing=id?expenses.find(e=>e.id===id):undefined;const item:Expense=id&&existing?{...existing,...data,createdAt:existing.createdAt}:{...data,id:`exp-${Date.now()}-${crypto.randomUUID().slice(0,8)}`,createdAt:Date.now()};const previousPortfolio=portfolio;let nextPortfolio=portfolio;const applyHoldingDelta=(current:PortfolioConfig,holdingId:string,delta:number)=>{const currentHoldings=current.holdings||[];const target=currentHoldings.find(h=>h.id===holdingId);if(!target||!Number.isFinite(delta)||delta===0)return current;const price=Number(target.currentPrice)||0;const nextInvested=Math.max(0,target.investedAmount+delta);const nextUnits=price>0?Math.max(0,target.units+(delta/price)):target.units;return {...current,holdings:currentHoldings.map(h=>h.id===holdingId?{...h,investedAmount:nextInvested,units:nextUnits,currentValue:nextUnits*(Number(h.currentPrice)||0),lastUpdatedAt:Date.now()}:h)};};if(existing?.categoryId==='investment'&&existing.holdingId&&existing.holdingId!==data.holdingId)nextPortfolio=applyHoldingDelta(nextPortfolio,existing.holdingId,-existing.amount);if(data.categoryId==='investment'&&data.holdingId)nextPortfolio=applyHoldingDelta(nextPortfolio,data.holdingId,item.amount-(existing?.holdingId===data.holdingId?existing.amount:0));setExpenses(prev=>id?prev.map(e=>e.id===id?item:e):[item,...prev]);setPortfolio(nextPortfolio);try{await saveExpense(user.id,item);if(nextPortfolio!==previousPortfolio)await savePortfolio(user.id,nextPortfolio);toast(id?'Transaction updated':'Transaction saved to cloud');}catch(error:any){setExpenses(previous=>id?previous.map(e=>e.id===id&&existing?existing:e):previous.filter(e=>e.id!==item.id));setPortfolio(previousPortfolio);toast(`Could not save transaction: ${error?.message||'Please try again'}`);}};"
+          if old_save not in s: raise SystemExit('Missing patch anchor: save transaction')
+          s = s.replace(old_save,new_save,1)
+          old_remove = " const remove=async(id:string)=>{if(!user)return;const previous=expenses;setExpenses(prev=>prev.filter(e=>e.id!==id));try{await removeExpense(user.id,id);toast('Transaction deleted from cloud');}catch(error:any){setExpenses(previous);toast(`Could not delete transaction: ${error?.message||'Please try again'}`);}};"
+          new_remove = " const remove=async(id:string)=>{if(!user)return;const previous=expenses;const removed=expenses.find(e=>e.id===id);const previousPortfolio=portfolio;let nextPortfolio=portfolio;if(removed?.categoryId==='investment'&&removed.holdingId){const currentHoldings=portfolio.holdings||[];const target=currentHoldings.find(h=>h.id===removed.holdingId);if(target){const price=Number(target.currentPrice)||0;const nextUnits=price>0?Math.max(0,target.units-(removed.amount/price)):target.units;nextPortfolio={...portfolio,holdings:currentHoldings.map(h=>h.id===removed.holdingId?{...h,investedAmount:Math.max(0,h.investedAmount-removed.amount),units:nextUnits,currentValue:nextUnits*(Number(h.currentPrice)||0),lastUpdatedAt:Date.now()}:h)};}}setExpenses(prev=>prev.filter(e=>e.id!==id));setPortfolio(nextPortfolio);try{await removeExpense(user.id,id);if(nextPortfolio!==previousPortfolio)await savePortfolio(user.id,nextPortfolio);toast('Transaction deleted from cloud');}catch(error:any){setExpenses(previous);setPortfolio(previousPortfolio);toast(`Could not delete transaction: ${error?.message||'Please try again'}`);}};"
+          if old_remove not in s: raise SystemExit('Missing patch anchor: remove transaction')
+          s = s.replace(old_remove,new_remove,1)
+          p.write_text(s)
+          print('Patched FinBookApp.tsx')
+
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/types.ts src/components/ExpenseModal.tsx src/components/PortfolioManagerCore.tsx src/FinBookApp.tsx
+          git commit -m "Connect investment transactions to holdings" || echo "No changes to commit"
+          git push
+
+      - name: Remove integration workflow
+        if: success()
+        run: |
+          git rm .github/workflows/integrate-investment-holdings.yml
+          git commit -m "Remove temporary investment integration workflow"
+          git push
