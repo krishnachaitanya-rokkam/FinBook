@@ -4,7 +4,6 @@ import FinBookApp from './FinBookApp';
 import './index.css';
 import './brand.css';
 import './familyDashboard.css';
-import './investmentTransaction.css';
 import { startFamilyGoalInvestmentSync } from './services/familyGoalInvestmentSync';
 
 startFamilyGoalInvestmentSync();
