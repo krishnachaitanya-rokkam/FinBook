@@ -33,12 +33,20 @@ export interface FinancialGoal {
   familyName?: string;
 }
 export interface PortfolioConfig { fields: PortfolioField[]; netWorthItems?: NetWorthItem[]; goals?: FinancialGoal[]; holdings?: InvestmentHolding[]; }
+export function getHoldingAssetType(field: PortfolioField): 'mutual-fund' | 'stock' | null {
+  const id = String(field.id || '').toLowerCase().replace(/[_\s]+/g, '-');
+  const label = String(field.label || '').toLowerCase().replace(/[_\s]+/g, '-');
+  if (id === 'mutual-funds' || id === 'mutual-fund' || id === 'mutualfunds' || label === 'mutual-funds' || label === 'mutual-fund') return 'mutual-fund';
+  if (id === 'stocks' || id === 'stock' || label === 'stocks' || label === 'stock') return 'stock';
+  return null;
+}
+
 export function getEffectivePortfolioFields(config: PortfolioConfig): PortfolioField[] {
   const fields = config.fields || [];
   const holdings = config.holdings || [];
   return fields.map(field => {
-    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;
-    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';
+    const assetType = getHoldingAssetType(field);
+    if (!assetType) return field;
     const matching = holdings.filter(item => item.assetType === assetType);
     return {
       ...field,
