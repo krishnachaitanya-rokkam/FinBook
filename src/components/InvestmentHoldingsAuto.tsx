@@ -13,8 +13,8 @@ const EMPTY: Draft = { assetType: 'mutual-fund', name: '', schemeCode: '', units
 const COLORS = ['#4f46e5', '#0891b2', '#0d9488', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#64748b'];
 const idFor = (prefix: string, value: string) => `${prefix}-${value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'item'}-${Date.now()}`;
 
-const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = [], nextFields: PortfolioField[] = []) => goals.map(goal => {
-  const wasLinked = previousHoldings.some(h => h.goalId === goal.id);
+const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = [], previousFields: PortfolioField[] = [], nextFields: PortfolioField[] = []) => goals.map(goal => {
+  const wasLinked = previousHoldings.some(h => h.goalId === goal.id) || previousFields.some(f => !getHoldingAssetType(f) && f.goalId === goal.id);
   const linked = nextHoldings.filter(h => h.goalId === goal.id);
   const linkedFields = nextFields.filter(f => !getHoldingAssetType(f) && f.goalId === goal.id);
   const linkedAmount = linked.reduce((sum, h) => sum + (Number(h.currentValue) || 0), 0) + linkedFields.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
@@ -97,7 +97,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     if (!Number.isFinite(units) || units <= 0 || !Number.isFinite(invested) || invested < 0) return;
     const item: InvestmentHolding = { id: editingHoldingId || idFor('holding', name), assetType: draft.assetType, name, ...(draft.schemeCode ? { schemeCode: draft.schemeCode } : {}), units, investedAmount: invested, currentPrice: price, currentValue: units * price, lastUpdatedAt: Date.now(), ...(draft.navDate ? { navDate: draft.navDate } : {}), source: draft.assetType === 'mutual-fund' && draft.schemeCode ? 'automatic' : 'manual', goalId: draft.goalId || undefined };
     const nextHoldings = editingHoldingId ? holdings.map(h => h.id === editingHoldingId ? item : h) : [...holdings, item];
-    const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
+    const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings, customFields, customFields);
     setSaving(true);
     try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); closeHolding(); }
     finally { setSaving(false); }
@@ -140,14 +140,14 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     const next: PortfolioField[] = editingCategoryId
       ? customFields.map(f => f.id === editingCategoryId ? { ...f, label, amount, goalId: categoryDraft.goalId || undefined } : f)
       : [...customFields, { id: idFor('asset', label), label, amount, color: COLORS[customFields.length % COLORS.length], goalId: categoryDraft.goalId || undefined }];
-    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, next);
+    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, customFields, next);
     setSaving(true); try { await onSave({ ...config, fields: next, goals: nextGoals }); closeCategory(); } finally { setSaving(false); }
   };
   const removeCategory = async (id: string) => {
     const f = customFields.find(x => x.id === id);
     if (!f || !window.confirm(`Remove ${f.label} from investments?`)) return;
     const nextFields = customFields.filter(x => x.id !== id);
-    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, nextFields);
+    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, customFields, nextFields);
     setSaving(true); try { await onSave({ ...config, fields: nextFields, goals: nextGoals }); } finally { setSaving(false); }
   };
 
