@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import FinBookApp from './FinBookApp';
 import './index.css';
 import './brand.css';
+import './familyDashboard.css';
 import { startFamilyGoalInvestmentSync } from './services/familyGoalInvestmentSync';
 
 startFamilyGoalInvestmentSync();
