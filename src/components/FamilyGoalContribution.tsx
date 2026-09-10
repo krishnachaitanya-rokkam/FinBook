@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDocs, onSnapshot, runTransaction } from 'firebase/firestore';
+import { collection, doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { Pencil, Plus, Target, Trash2 } from 'lucide-react';
 import { firebaseAuth, firestore } from '../services/firebase';
 import { formatCurrency } from '../utils/formatters';
@@ -34,31 +34,22 @@ export function FamilyGoalContribution() {
     });
   }, [uid]);
 
-  // Read the complete family-goal collection and keep it live. The initial getDocs
-  // prevents a stale/offline snapshot from leaving the Individual view with only
-  // the most recently created goal; the listener then becomes the live source.
+  // onSnapshot already delivers the complete initial collection and then all live changes.
+  // Do not combine it with a separate getDocs result: an older cached getDocs response can
+  // arrive after the live snapshot and overwrite the complete goal list with stale data.
   useEffect(() => {
     if (!familyId) { setGoals([]); setGoalId(''); return; }
-    let cancelled = false;
-    const loadInitial = async () => {
-      try {
-        const snap = await getDocs(goalsCollection(familyId));
-        if (!cancelled) setGoals(snap.docs.map(item => ({ id: item.id, ...(item.data() as Omit<Goal, 'id'>) })));
-      } catch (error) {
-        console.error('Family goals initial read failed:', error);
-      }
-    };
-    void loadInitial();
-    const stop = onSnapshot(goalsCollection(familyId), snap => {
-      if (cancelled) return;
+    setGoalId(current => current);
+    return onSnapshot(goalsCollection(familyId), snap => {
       const next = snap.docs.map(item => ({ id: item.id, ...(item.data() as Omit<Goal, 'id'>) }));
       setGoals(next);
       setGoalId(current => current && next.some(g => g.id === current) ? current : next[0]?.id || '');
     }, error => {
       console.error('Family goals live read failed:', error);
-      if (!cancelled) setMessage('Could not refresh family goals. Please reopen the Goals view.');
+      setGoals([]);
+      setGoalId('');
+      setMessage('Could not load all family goals. Please check your connection and reopen Goals.');
     });
-    return () => { cancelled = true; stop(); };
   }, [familyId]);
 
   const orderedGoals = useMemo(() => [...goals].sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''))), [goals]);
