@@ -35,7 +35,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
 
   useEffect(() => {
     const check = () => {
-      const activePortfolio = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Portfolio' && button.className.includes('bg-slate-900'));
+      const activePortfolio = Array.from(document.querySelectorAll('button')).filter(button => button.textContent?.trim() === 'Portfolio' && button.className.includes('bg-slate-900')).pop();
       const activeButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Goals' && button.className.includes('bg-slate-900'));
       const activeForecast = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Forecast' && button.className.includes('bg-slate-900'));
       const activeNetWorth = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Net Worth' && button.className.includes('bg-slate-900'));
