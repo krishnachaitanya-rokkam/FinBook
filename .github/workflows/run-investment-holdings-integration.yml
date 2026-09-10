@@ -1,0 +1,49 @@
+name: Run investment holdings integration
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: "!contains(github.event.head_commit.message, '[holdings-integration]')"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run existing integration patch
+        shell: python
+        run: |
+          from pathlib import Path
+          import textwrap
+          workflow = Path('.github/workflows/integrate-investment-holdings.yml').read_text()
+          marker = '      - name: Patch AHVIQ investment model\n'
+          start = workflow.index('        run: |\n', workflow.index(marker)) + len('        run: |\n')
+          end = workflow.index('\n\n      - name: Build', start)
+          block = workflow[start:end]
+          code = textwrap.dedent('\n'.join(line[8:] if line.startswith('        ') else line for line in block.splitlines()))
+          exec(compile(code, '<embedded-integration-patch>', 'exec'), {})
+
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Commit source changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/types.ts src/components/ExpenseModal.tsx src/components/PortfolioManagerCore.tsx src/FinBookApp.tsx
+          git commit -m "[holdings-integration] Connect investment transactions to holdings"
+          git push
+
+      - name: Remove temporary workflows
+        run: |
+          git rm .github/workflows/integrate-investment-holdings.yml .github/workflows/run-investment-holdings-integration.yml
+          git commit -m "[holdings-integration] Remove temporary integration workflows"
+          git push
