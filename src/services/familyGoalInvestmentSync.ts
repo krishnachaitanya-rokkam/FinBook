@@ -14,15 +14,13 @@ const holdingValue = (h: Holding) => Math.max(0, Number(h.currentValue) || ((Num
 const sameNumber = (a: unknown, b: unknown) => Math.abs(Number(a) - Number(b)) < 0.01;
 const sameMap = (a: Record<string, number> = {}, b: Record<string, number> = {}) => { const keys = new Set([...Object.keys(a), ...Object.keys(b)]); for (const key of keys) if (!sameNumber(a[key] || 0, b[key] || 0)) return false; return true; };
 
-// A holding is linked to a family goal when it explicitly carries the family
-// metadata OR when its goalId matches a goal in the active family and the old
-// record has no scope metadata. The latter repairs holdings created by older
-// versions of the app that stored only goalId.
+// Family goals are the source of truth for family linkage. Older holdings may
+// contain only goalId, or may have goalScope='family' without goalFamilyId.
+// Personal holdings are never treated as family holdings.
 const isLinkedToFamilyGoal = (h: Holding, familyId: string, goalId: string) =>
-  h.goalId === goalId && (
-    h.goalScope === 'family' && h.goalFamilyId === familyId ||
-    !h.goalScope && !h.goalFamilyId
-  );
+  h.goalId === goalId &&
+  h.goalScope !== 'personal' &&
+  (!h.goalFamilyId || h.goalFamilyId === familyId);
 
 export function startFamilyGoalInvestmentSync(): () => void {
   let stopFamilyLink = () => {}; let stopPortfolio = () => {}; let stopGoals = () => {};
@@ -33,9 +31,6 @@ export function startFamilyGoalInvestmentSync(): () => void {
     if (running) { rerun = true; return; }
     running = true;
     try {
-      // Reconcile every family goal, not only goals that currently have a
-      // contribution entry. This also removes stale values when a holding is
-      // retagged or deleted.
       for (const goalId of goals) {
         const linkedValue = holdings
           .filter(h => isLinkedToFamilyGoal(h, activeFamilyId, goalId))
