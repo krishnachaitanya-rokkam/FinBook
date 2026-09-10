@@ -1,0 +1,51 @@
+name: Integrate Investment Holdings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/InvestmentHoldings.tsx'
+      - 'src/services/portfolioService.ts'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Integrate component
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/PortfolioManager.tsx')
+          s = p.read_text()
+          if "./InvestmentHoldings" not in s:
+              s = s.replace("import { WealthAllocation } from './WealthAllocation';", "import { WealthAllocation } from './WealthAllocation';\nimport { InvestmentHoldings } from './InvestmentHoldings';")
+          s = s.replace("const [netWorthVisible, setNetWorthVisible] = useState(false);", "const [netWorthVisible, setNetWorthVisible] = useState(false);\n  const [portfolioVisible, setPortfolioVisible] = useState(false);")
+          s = s.replace("const activeButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Goals'", "const activePortfolio = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Portfolio' && button.className.includes('bg-slate-900'));\n      const activeButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Goals'")
+          s = s.replace("setGoalsVisible(Boolean(activeButton));", "setPortfolioVisible(Boolean(activePortfolio));\n      setGoalsVisible(Boolean(activeButton));")
+          marker = "<PortfolioManagerCore config={config} onSave={onSave} />"
+          if "<InvestmentHoldings config={config}" not in s:
+              s = s.replace(marker, marker + "\n    {portfolioVisible && <InvestmentHoldings config={config} onSave={onSave} />}")
+          p.write_text(s)
+          PY
+      - name: Validate build
+        run: npm install --no-audit --no-fund && npm run build
+      - name: Commit integration and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManager.tsx .github/workflows/integrate-investment-holdings.yml
+          git commit -m "Integrate investment holdings into portfolio" || exit 0
+          git push
+          git rm .github/workflows/integrate-investment-holdings.yml
+          git commit -m "Remove temporary holdings integration workflow"
+          git push
