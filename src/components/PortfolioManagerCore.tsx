@@ -20,7 +20,13 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const [portfolioDraft, setPortfolioDraft] = useState(emptyPortfolioDraft); const [netWorthDraft, setNetWorthDraft] = useState(emptyNetWorthDraft); const [goalDraft, setGoalDraft] = useState(emptyGoalDraft);
   const [editingPortfolioId, setEditingPortfolioId] = useState<string | null>(null); const [editingNetWorthId, setEditingNetWorthId] = useState<string | null>(null); const [editingGoalId, setEditingGoalId] = useState<string | null>(null); const [saving, setSaving] = useState(false);
   const [forecastPeriod, setForecastPeriod] = useState<1 | 3 | 5>(5); const [forecastRate, setForecastRate] = useState<number>(10); const [monthlyContribution, setMonthlyContribution] = useState<number | null>(null);
-  const fields = config.fields || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];
+  const rawFields = config.fields || []; const holdings = config.holdings || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];
+  const fields = useMemo(() => rawFields.map(field => {
+    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;
+    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';
+    const linkedValue = holdings.filter(item => item.assetType === assetType).reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0);
+    return holdings.some(item => item.assetType === assetType) ? { ...field, amount: linkedValue } : field;
+  }), [rawFields, holdings]);
   const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);
   const extraAssets = useMemo(() => netWorthItems.filter(item => item.kind === 'asset').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
   const liabilities = useMemo(() => netWorthItems.filter(item => item.kind === 'liability').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);

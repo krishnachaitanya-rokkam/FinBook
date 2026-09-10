@@ -30,6 +30,7 @@ export interface Expense {
   amount: number;
   categoryId: CategoryId;
   investmentType?: InvestmentType;
+  holdingId?: string;
   date: string;
   paymentMethod: PaymentMethod;
   notes?: string;
