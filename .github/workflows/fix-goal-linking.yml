@@ -8,17 +8,14 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 jobs:
-  patch-build-deploy:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
-      - name: Patch investment goal linking
+      - name: Patch source
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -30,34 +27,17 @@ jobs:
             ("const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);", "const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings, customFields, customFields);"),
             ("const nextGoals = syncGoalProgress(config.goals, holdings, holdings, next);", "const nextGoals = syncGoalProgress(config.goals, holdings, holdings, customFields, next);"),
             ("const nextGoals = syncGoalProgress(config.goals, holdings, holdings, nextFields);", "const nextGoals = syncGoalProgress(config.goals, holdings, holdings, customFields, nextFields);"),
-            ("<label className=\"mt-3 block text-xs font-semibold text-slate-600\">Tag to goal<select value={categoryDraft.goalId}", "<div className=\"mt-3\"><label className=\"block text-xs font-semibold text-slate-600\">Tag to goal<select value={categoryDraft.goalId}"),
-            ("This investment value will count toward the selected goal.</span></label></label><div className=\"mt-6", "This investment value will count toward the selected goal.</span></label></div><div className=\"mt-6"),
           ]
           for old, new in replacements:
               if old not in s:
-                  raise SystemExit('Expected source pattern not found: ' + old[:120])
+                  raise SystemExit('Expected pattern not found: ' + old)
               s = s.replace(old, new, 1)
           p.write_text(s)
           PY
-          npm install
-          npm run build
-
-      - name: Commit source update
+      - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/components/InvestmentHoldingsAuto.tsx
-          git diff --cached --quiet || git commit -m "Complete investment goal progress linking"
+          git diff --cached --quiet || git commit -m "Finalize investment goal progress linking"
           git push
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: './dist'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
