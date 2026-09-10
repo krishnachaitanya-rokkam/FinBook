@@ -1,0 +1,61 @@
+name: Repair Investment Holdings
+on:
+  push:
+    paths:
+      - .github/workflows/repair-investment-holdings.yml
+  workflow_dispatch:
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Integrate holdings directly into Portfolio tab
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          core = Path('src/components/PortfolioManagerCore.tsx')
+          s = core.read_text()
+          import_line = "import { InvestmentHoldingsAuto } from './InvestmentHoldingsAuto';\n"
+          if import_line not in s:
+              marker = "import { formatCurrency } from '../utils/formatters';\n"
+              if marker not in s:
+                  raise SystemExit('Core import marker not found')
+              s = s.replace(marker, marker + import_line, 1)
+          mount = "<InvestmentHoldingsAuto config={config} onSave={onSave} />"
+          if mount not in s:
+              marker = "{tab === 'portfolio' && <>"
+              if marker not in s:
+                  raise SystemExit('Portfolio tab render marker not found')
+              s = s.replace(marker, marker + mount, 1)
+          core.write_text(s)
+
+          pm = Path('src/components/PortfolioManager.tsx')
+          p = pm.read_text()
+          p = p.replace("import { InvestmentHoldingsAuto } from './InvestmentHoldingsAuto';\n", "")
+          p = p.replace("    {portfolioVisible && <InvestmentHoldingsAuto config={config} onSave={onSave} />}\n", "")
+          pm.write_text(p)
+          PY
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Commit source fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManager.tsx src/components/PortfolioManagerCore.tsx
+          git commit -m "Render investment holdings directly in portfolio tab" || true
+          git push
+      - name: Deploy repaired source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref main
+      - name: Remove temporary workflows
+        run: |
+          git rm .github/workflows/repair-investment-holdings.yml .github/workflows/apply-holdings-visibility-fix.yml .github/workflows/fix-holdings-only-portfolio.yml .github/workflows/fix-investment-holdings-placement.yml 2>/dev/null || true
+          git commit -m "Remove temporary holdings repair workflows" || true
+          git push || true
