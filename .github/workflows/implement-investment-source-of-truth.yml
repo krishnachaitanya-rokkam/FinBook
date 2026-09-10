@@ -1,0 +1,70 @@
+name: Implement investment source of truth
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply investment architecture
+        shell: python
+        run: |
+          from pathlib import Path
+
+          service = Path('src/services/portfolioService.ts')
+          text = service.read_text()
+          marker = "export const DEFAULT_PORTFOLIO_FIELDS: PortfolioField[] = ["
+          helper = """export function getEffectivePortfolioFields(config: PortfolioConfig): PortfolioField[] {\n  const fields = config.fields || [];\n  const holdings = config.holdings || [];\n  return fields.map(field => {\n    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;\n    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';\n    const matching = holdings.filter(item => item.assetType === assetType);\n    if (!matching.length) return field;\n    return {\n      ...field,\n      amount: matching.reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0),\n    };\n  });\n}\n\nexport function getEffectivePortfolioTotal(config: PortfolioConfig): number {\n  return getEffectivePortfolioFields(config).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);\n}\n\n"""
+          if 'export function getEffectivePortfolioFields' not in text:
+              text = text.replace(marker, helper + marker, 1)
+              service.write_text(text)
+
+          core = Path('src/components/PortfolioManagerCore.tsx')
+          text = core.read_text()
+          text = text.replace("import { FinancialGoal, NetWorthItem, PortfolioConfig, PortfolioField } from '../services/portfolioService';", "import { FinancialGoal, NetWorthItem, PortfolioConfig, PortfolioField, getEffectivePortfolioFields } from '../services/portfolioService';")
+          old = "const rawFields = config.fields || []; const holdings = config.holdings || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];\n  const fields = useMemo(() => rawFields.map(field => {\n    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;\n    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';\n    const linkedValue = holdings.filter(item => item.assetType === assetType).reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0);\n    return holdings.some(item => item.assetType === assetType) ? { ...field, amount: linkedValue } : field;\n  }), [rawFields, holdings]);"
+          new = "const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]); const holdings = config.holdings || []; const netWorthItems = config.netWorthItems || []; const goals = config.goals || [];"
+          if old not in text:
+              raise SystemExit('Core fields block not found')
+          text = text.replace(old, new, 1)
+          old_card = "<p className=\"text-sm font-semibold text-slate-900 truncate\">{field.label}</p><p className=\"text-xs text-slate-400\">{portfolioTotal > 0 ? Math.round((field.amount / portfolioTotal) * 100) : 0}% of portfolio</p>"
+          new_card = "<div className=\"flex items-center gap-2\"><p className=\"text-sm font-semibold text-slate-900 truncate\">{field.label}</p>{(field.id === 'mutual-funds' || field.id === 'stocks') && holdings.some(item => item.assetType === (field.id === 'mutual-funds' ? 'mutual-fund' : 'stock')) && <span className=\"shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700\">LIVE</span>}</div><p className=\"text-xs text-slate-400\">{portfolioTotal > 0 ? Math.round((field.amount / portfolioTotal) * 100) : 0}% of portfolio</p>"
+          if old_card in text:
+              text = text.replace(old_card, new_card, 1)
+          core.write_text(text)
+
+          parent = Path('src/components/PortfolioManager.tsx')
+          text = parent.read_text()
+          text = text.replace("import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';", "import { FinancialGoal, PortfolioConfig, getEffectivePortfolioFields } from '../services/portfolioService';")
+          text = text.replace("const fields = config.fields || [];\n  const netWorthItems = config.netWorthItems || [];\n  const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);", "const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);\n  const netWorthItems = config.netWorthItems || [];\n  const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);")
+          parent.write_text(text)
+
+          wealth = Path('src/components/WealthAllocation.tsx')
+          text = wealth.read_text()
+          text = text.replace("import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';", "import { PortfolioConfig, getEffectivePortfolioFields } from '../services/portfolioService';")
+          text = text.replace("const fields = config.fields || [];\n  const items = config.netWorthItems || [];", "const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);\n  const items = config.netWorthItems || [];")
+          wealth.write_text(text)
+
+          print('Investment architecture patches applied')
+
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Commit source changes and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/services/portfolioService.ts src/components/PortfolioManagerCore.tsx src/components/PortfolioManager.tsx src/components/WealthAllocation.tsx .github/workflows/implement-investment-source-of-truth.yml
+          git commit -m "Connect investment categories to live holdings" || exit 0
+          git rm .github/workflows/implement-investment-source-of-truth.yml
+          git commit -m "Remove temporary investment architecture workflow"
+          git push
