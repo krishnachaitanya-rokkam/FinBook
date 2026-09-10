@@ -166,6 +166,19 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
 }
 
+/* Dialogs: keep modal content inside the viewport instead of clipping the footer. */
+[role="dialog"] > form {
+  max-height: calc(100dvh - 2rem) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+/* Prevent the goal selector from creating a modal overflow on narrow screens. */
+[role="dialog"] select {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 /* iOS Safari gives date inputs an intrinsic minimum width. Constrain the
    control to its grid/flex cell so the Goal modal remains aligned. */
 input[type="date"] {
