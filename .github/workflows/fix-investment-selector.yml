@@ -1,0 +1,53 @@
+name: Fix investment holding selector
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: "!contains(github.event.head_commit.message, '[selector-fix]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move holding selector next to investment type
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          p = Path('src/components/ExpenseModal.tsx')
+          s = p.read_text()
+          marker = '            {(investmentType === \'mutual_funds\' || investmentType === \'stocks\') && <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">'
+          if marker in s:
+              start = s.index(marker)
+              goal = '            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3"><div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Target'
+              end = s.index(goal, start)
+              block = s[start:end]
+              s = s[:start] + s[end:]
+          else:
+              block = '''            {(investmentType === 'mutual_funds' || investmentType === 'stocks') && <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-3"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-bold text-slate-800">Investment holding</p><p className="mt-0.5 text-[11px] text-slate-500">Link this transaction to the holding it belongs to.</p></div><span className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600">Linked</span></div><select id="select-investment-holding" value={selectedHoldingId} onChange={e=>setSelectedHoldingId(e.target.value)} className="mt-3 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-slate-900 focus:border-indigo-600 focus:outline-hidden"><option value="">{holdings.filter(item=>investmentType==='mutual_funds'?item.assetType==='mutual-fund':item.assetType==='stock').length ? 'Select holding' : 'No matching holdings yet'}</option>{holdings.filter(item=>investmentType==='mutual_funds'?item.assetType==='mutual-fund':item.assetType==='stock').map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><p className="mt-1.5 text-[11px] text-slate-400">Add a holding first from Portfolio → Portfolio → Investment Holdings.</p></div>}\n\n'''
+          insert_after = '          {categoryId === \'investment\' && <div className="space-y-3"><div><label htmlFor="select-investment-type"'
+          pos = s.index(insert_after)
+          # Find end of the Investment Type wrapper before the next field in the investment block.
+          next_label = s.index('</div>', s.index('</select>', pos))
+          next_label = s.index('</div>', next_label + 6)
+          s = s[:next_label + 6] + '\n' + block + s[next_label + 6:]
+          p.write_text(s)
+          print('Updated ExpenseModal.tsx')
+      - name: Build
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Commit and clean up
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/ExpenseModal.tsx
+          git commit -m "[selector-fix] Show investment holding selector prominently"
+          git push
+          git rm .github/workflows/fix-investment-selector.yml
+          git commit -m "[selector-fix] Remove temporary selector workflow"
+          git push
