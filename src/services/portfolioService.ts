@@ -14,6 +14,7 @@ export interface InvestmentHolding {
   currentPrice: number;
   currentValue: number;
   lastUpdatedAt: number;
+  source?: 'manual' | 'automatic';
   goalId?: string;
 }
 export interface FinancialGoal {
@@ -49,14 +50,14 @@ export function subscribeToPortfolio(uid: string, onChange: (config: PortfolioCo
         const type = goal.type === 'investment' ? 'investment' : 'savings';
         return { id: String(goal.id), name: String(goal.name), targetAmount: Number(goal.targetAmount) || 0, currentAmount: Number(goal.currentAmount) || 0, targetDate: String(goal.targetDate || ''), monthlyContribution: Number(goal.monthlyContribution) || 0, type, scope: goal.scope === 'family' ? 'family' : 'personal', expectedAnnualReturn: normalizeReturn((goal as any).expectedAnnualReturn, type), familyId: goal.familyId ? String(goal.familyId) : undefined, familyName: goal.familyName ? String(goal.familyName) : undefined };
       }),
-      holdings: holdings.map(item => ({ id: String(item.id), assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: String(item.name), units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: Number(item.currentValue) || ((Number(item.units) || 0) * (Number(item.currentPrice) || 0)), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), goalId: item.goalId ? String(item.goalId) : undefined })),
+      holdings: holdings.map(item => ({ id: String(item.id), assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: String(item.name), units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: Number(item.currentValue) || ((Number(item.units) || 0) * (Number(item.currentPrice) || 0)), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), source: item.source === 'automatic' ? 'automatic' : 'manual', goalId: item.goalId ? String(item.goalId) : undefined })),
     });
   }, error => onError?.(error));
 }
 export async function savePortfolio(uid: string, config: PortfolioConfig): Promise<void> {
   const fields = config.fields.map(field => ({ id: field.id, label: field.label.trim(), amount: Number(field.amount) || 0, color: field.color }));
   const netWorthItems = (config.netWorthItems || []).map(item => ({ id: item.id, label: item.label.trim(), amount: Number(item.amount) || 0, kind: item.kind, type: item.type }));
-  const goals = (config.goals || []).map(goal => ({ id: goal.id, name: goal.name.trim(), targetAmount: Number(goal.targetAmount) || 0, currentAmount: Number(goal.currentAmount) || 0, targetDate: goal.targetDate, monthlyContribution: Number(goal.monthlyContribution) || 0, type: goal.type === 'investment' ? 'investment' : 'savings', scope: goal.scope === 'family' ? 'family' : 'personal', expectedAnnualReturn: normalizeReturn(goal.expectedAnnualReturn, goal.type), ...(goal.familyId ? { familyId: goal.familyId } : {}), ...(goal.familyName ? { familyName: goal.familyName } : {}) }));
-  const holdings = (config.holdings || []).map(item => ({ id: item.id, assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: item.name.trim(), units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: (Number(item.units) || 0) * (Number(item.currentPrice) || 0), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), ...(item.goalId ? { goalId: item.goalId } : {}) }));
+  const goals = (config.goals || []).map(goal => ({ id: goal.id, name: goal.name.trim(), targetAmount: Number(goal.targetAmount) || 0, currentAmount: Number(goal.currentAmount) || 0, monthlyContribution: Number(goal.monthlyContribution) || 0, targetDate: goal.targetDate, type: goal.type === 'investment' ? 'investment' : 'savings', scope: goal.scope === 'family' ? 'family' : 'personal', expectedAnnualReturn: normalizeReturn(goal.expectedAnnualReturn, goal.type), ...(goal.familyId ? { familyId: goal.familyId } : {}), ...(goal.familyName ? { familyName: goal.familyName } : {}) }));
+  const holdings = (config.holdings || []).map(item => ({ id: item.id, assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: item.name.trim(), units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: (Number(item.units) || 0) * (Number(item.currentPrice) || 0), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), source: item.source === 'automatic' ? 'automatic' : 'manual', ...(item.goalId ? { goalId: item.goalId } : {}) }));
   await setDoc(portfolioDoc(uid), { fields, netWorthItems, goals, holdings });
 }
