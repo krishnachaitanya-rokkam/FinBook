@@ -1,0 +1,73 @@
+/* Family dashboard redesign — mockup-inspired visual layer. Data and behavior remain unchanged. */
+:root{--family-blue:#315eea;--family-ink:#111b45;--family-muted:#74809d;--family-line:#e6ebf5;--family-bg:#f7f9ff;--family-green:#18a66a;}
+
+/* Scope everything to the Family dashboard section: it is the section containing the Family h2. */
+main section:has(> div > div h2){background:linear-gradient(180deg,#fbfcff 0%,#fff 55%)!important;border:1px solid #e5eaf5!important;border-radius:24px!important;box-shadow:0 14px 42px rgba(47,73,130,.08)!important;padding:20px!important;color:var(--family-ink)!important;}
+main section:has(> div > div h2)>div:first-child{gap:18px!important;}
+main section:has(> div > div h2)>div:first-child>div:first-child{align-items:center!important;}
+main section:has(> div > div h2)>div:first-child>div:first-child>div:first-child{width:48px!important;height:48px!important;border-radius:16px!important;background:linear-gradient(145deg,#eef3ff,#dfe8ff)!important;color:var(--family-blue)!important;box-shadow:0 8px 18px rgba(49,94,234,.12)!important;}
+main section:has(> div > div h2) h2{font-size:20px!important;letter-spacing:-.03em!important;color:var(--family-ink)!important;}
+main section:has(> div > div h2) h2+p{color:#7b86a1!important;}
+
+/* Cycle navigation */
+main section:has(> div > div h2)>div:first-child>div:nth-child(2){background:linear-gradient(180deg,#fff,#f8faff)!important;border:1px solid #dfe6f3!important;border-radius:15px!important;padding:8px!important;box-shadow:inset 0 1px 0 #fff,0 5px 18px rgba(42,63,110,.04)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(2) button{width:34px!important;height:34px!important;border-radius:10px!important;border:1px solid #d9e1ee!important;background:#fff!important;color:#66718c!important;box-shadow:0 3px 8px rgba(40,60,100,.05)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(2) button:hover{color:var(--family-blue)!important;border-color:#bfcdf1!important;}
+
+/* Summary cards */
+main section:has(> div > div h2)>div:first-child>div:nth-child(3){display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:12px!important;margin-top:0!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div{min-height:106px!important;border-radius:18px!important;border:1px solid var(--family-line)!important;padding:16px!important;box-shadow:0 6px 18px rgba(40,65,120,.045)!important;position:relative;overflow:hidden;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div:nth-child(1){background:linear-gradient(135deg,#f0fbf8,#fff)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div:nth-child(2){background:linear-gradient(135deg,#fff3f4,#fff)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div:nth-child(3){background:linear-gradient(135deg,#eefbf6,#fff)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div:nth-child(4){background:linear-gradient(135deg,#eef2ff,#fff)!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div:after{content:'';position:absolute;right:14px;bottom:12px;width:34px;height:28px;opacity:.25;background:linear-gradient(135deg,transparent 20%,currentColor 21%,currentColor 25%,transparent 26%,transparent 42%,currentColor 43%,currentColor 47%,transparent 48%,transparent 64%,currentColor 65%,currentColor 69%,transparent 70%);color:var(--family-blue);}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3) p:first-child{font-size:11px!important;color:#7a849c!important;}
+main section:has(> div > div h2)>div:first-child>div:nth-child(3) p:last-child{font-size:20px!important;letter-spacing:-.025em!important;color:var(--family-ink)!important;}
+
+/* Family goals container */
+main section:has(> div > div h2)>div:first-child>section{margin-top:0!important;padding:16px!important;border:1px solid #e0e7f4!important;border-radius:20px!important;background:linear-gradient(145deg,#fff,#f7f9ff)!important;box-shadow:0 8px 24px rgba(44,67,120,.05)!important;}
+main section:has(> div > div h2)>div:first-child>section>div:first-child{gap:16px!important;}
+main section:has(> div > div h2)>div:first-child>section h3{font-size:18px!important;letter-spacing:-.025em!important;color:var(--family-ink)!important;}
+main section:has(> div > div h2)>div:first-child>section>div:first-child>div:first-child>div:first-child{width:42px!important;height:42px!important;border-radius:14px!important;background:#e9efff!important;color:var(--family-blue)!important;}
+main section:has(> div > div h2)>div:first-child>section>div:first-child button{border-radius:12px!important;background:linear-gradient(135deg,#3868ef,#2857dd)!important;padding:10px 15px!important;box-shadow:0 8px 18px rgba(49,94,234,.2)!important;}
+
+/* Individual goal cards */
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2){gap:12px!important;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div{border:1px solid #e2e8f3!important;border-radius:17px!important;padding:16px!important;box-shadow:0 7px 20px rgba(40,63,115,.045)!important;position:relative;overflow:hidden;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div:after{content:'';position:absolute;right:0;top:0;width:24%;height:100%;background:radial-gradient(circle at 70% 35%,rgba(251,205,125,.42),transparent 32%),linear-gradient(145deg,rgba(232,239,255,.8),rgba(255,248,235,.6));pointer-events:none;opacity:.7;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div>*{position:relative;z-index:1;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div:nth-child(2){background:linear-gradient(135deg,#fff,#fffdf9)!important;}
+main section:has(> div > div h2)>div:first-child>section h4{font-size:16px!important;color:var(--family-ink)!important;}
+main section:has(> div > div h2)>div:first-child>section h4~p{color:#78839d!important;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div>div:nth-child(2) p:first-child{font-size:27px!important;letter-spacing:-.04em!important;color:var(--family-ink)!important;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div>div:nth-child(3)>div{border-radius:11px!important;border:1px solid #e8edf5!important;box-shadow:none!important;background:#f8faff!important;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div>div:nth-child(3)>div:nth-child(2){background:#f5f2ff!important;}
+main section:has(> div > div h2)>div:first-child>section>div:nth-child(2)>div>div:nth-child(3)>div:nth-child(4){background:#eef3ff!important;}
+
+/* Planner */
+main section:has(> div > div h2)>div:first-child>section>section{margin-top:12px!important;padding:16px!important;border-radius:19px!important;border:1px solid #e0e7f4!important;background:linear-gradient(145deg,#fff,#f8faff)!important;box-shadow:0 8px 24px rgba(44,67,120,.05)!important;}
+main section:has(> div > div h2)>div:first-child>section>section h3{font-size:19px!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(2){border-radius:13px!important;background:#f4f7ff!important;border-color:#dfe7fb!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(3)>div{border-radius:14px!important;border:1px solid #e5eaf4!important;background:#fafbff!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div{border-radius:16px!important;border:1px solid #e3e9f3!important;background:#fff!important;box-shadow:0 6px 18px rgba(40,63,115,.035)!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(3){height:7px!important;border-radius:99px!important;background:#edf0f7!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(3)>div{border-radius:99px!important;background:linear-gradient(90deg,#536ff1,#7894ff)!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(4)>div{border-radius:11px!important;border:1px solid #e8edf5!important;background:#f8faff!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(4)>div:nth-child(2){background:#eef3ff!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(4)>div:nth-child(3){background:#f5f0ff!important;}
+main section:has(> div > div h2)>div:first-child>section>section>div:nth-child(4)>div>div:nth-child(4)>div:nth-child(5){background:#eafaf3!important;}
+
+/* Lower family-management blocks */
+main section:has(> div > div h2)>div:last-child{border-top:1px solid #edf0f6!important;padding-top:18px!important;}
+main section:has(> div > div h2)>div:last-child>div>div{border-color:#e5eaf3!important;border-radius:14px!important;background:#fafbfe!important;}
+
+@media(max-width:900px){
+ main section:has(> div > div h2){padding:14px!important;border-radius:20px!important;}
+ main section:has(> div > div h2)>div:first-child>div:nth-child(3){grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:560px){
+ main section:has(> div > div h2)>div:first-child>div:nth-child(3){grid-template-columns:1fr 1fr!important;gap:8px!important;}
+ main section:has(> div > div h2)>div:first-child>div:nth-child(3)>div{min-height:90px!important;padding:12px!important;}
+ main section:has(> div > div h2)>div:first-child>div:nth-child(3) p:last-child{font-size:17px!important;}
+}
