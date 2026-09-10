@@ -1,0 +1,45 @@
+name: Integrate Automatic NAV Holdings
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/components/InvestmentHoldingsAuto.tsx'
+      - 'src/services/portfolioService.ts'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Integrate automatic NAV component
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/PortfolioManager.tsx')
+          s = p.read_text()
+          if "./InvestmentHoldingsAuto" not in s:
+              s = s.replace("import { InvestmentHoldings } from './InvestmentHoldings';", "import { InvestmentHoldingsAuto } from './InvestmentHoldingsAuto';")
+              s = s.replace("<InvestmentHoldings config={config} onSave={onSave} />", "<InvestmentHoldingsAuto config={config} onSave={onSave} />")
+          p.write_text(s)
+          PY
+      - name: Validate build
+        run: npm install --no-audit --no-fund && npm run build
+      - name: Commit integration and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/PortfolioManager.tsx
+          git commit -m "Use automatic mutual fund NAV holdings" || true
+          git push
+          git rm .github/workflows/integrate-auto-nav.yml
+          git commit -m "Remove temporary automatic NAV workflow"
+          git push
