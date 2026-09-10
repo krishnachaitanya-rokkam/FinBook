@@ -1,6 +1,7 @@
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { firestore } from './firebase';
 
+// Investment holdings are stored separately from category totals so current value can be refreshed later.
 export interface PortfolioField { id: string; label: string; amount: number; color: string; }
 export interface NetWorthItem { id: string; label: string; amount: number; kind: 'asset' | 'liability'; type: string; }
 export type GoalType = 'savings' | 'investment';
