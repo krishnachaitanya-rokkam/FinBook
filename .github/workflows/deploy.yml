@@ -47,4 +47,4 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-# AHVIQ investment holdings screen deployment.
+# AHVIQ investment holdings screen: decimal invested amounts supported.
