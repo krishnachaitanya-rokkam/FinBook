@@ -1,73 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, onSnapshot, runTransaction, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { Baby, Check, Pencil, Plus, Target, Trash2, X } from 'lucide-react';
 import { firebaseAuth, firestore } from '../services/firebase';
 import { formatCurrency } from '../utils/formatters';
 import { FamilyGoalPlanner } from './FamilyGoalPlanner';
 
 type FamilyGoal = { id: string; name: string; targetAmount: number; targetDate: string; monthlyContribution: number; type?: 'savings' | 'investment'; expectedAnnualReturn?: number; createdBy: string; createdAt: number; currentAmount?: number; contributions?: Record<string, number>; investmentContributions?: Record<string, number>; contributorNames?: Record<string, string> };
-type Holding = { id: string; goalId?: string; goalScope?: 'personal' | 'family'; goalFamilyId?: string; currentValue?: number; units?: number; currentPrice?: number };
 type FamilyGoalsProps = { familyId: string; familyName?: string; members?: Record<string, { name: string; email: string; role: string }> };
 const goalsCollection = (familyId: string) => collection(firestore, 'families', familyId, 'goals');
 const goalDoc = (familyId: string, goalId: string) => doc(firestore, 'families', familyId, 'goals', goalId);
-const portfolioDoc = (uid: string) => doc(firestore, 'users', uid, 'portfolio', 'config');
 const makeId = (name: string) => `family-goal-${name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'goal'}-${Date.now()}`;
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (v: number) => formatCurrency(Math.round(Number(v) || 0));
 const normalizeReturn = (v: number | undefined, type: 'savings' | 'investment') => type === 'investment' ? Math.min(50, Math.max(0, Number.isFinite(Number(v)) ? Number(v) : 8)) : 0;
-const totalContributions = (manual: Record<string, number> = {}, investments: Record<string, number> = {}) => Object.values(manual).reduce((s, v) => s + Math.max(0, Number(v) || 0), 0) + Object.values(investments).reduce((s, v) => s + Math.max(0, Number(v) || 0), 0);
 
 export function FamilyGoals({ familyId, familyName = 'Our Family', members = {} }: FamilyGoalsProps) {
   const uid = firebaseAuth.currentUser?.uid || '';
   const [goals, setGoals] = useState<FamilyGoal[]>([]);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState({ name: '', targetAmount: '', targetDate: '', monthlyContribution: '', type: 'savings' as 'savings' | 'investment', expectedAnnualReturn: '8' });
 
+  // Family goal progress is maintained by the central investment reconciliation
+  // service. This view is read-only for linked-investment progress so it cannot
+  // race with the portfolio listener and accidentally erase a synced value.
   useEffect(() => { if (!familyId) return; return onSnapshot(goalsCollection(familyId), snap => setGoals(snap.docs.map(item => ({ id: item.id, ...(item.data() as Omit<FamilyGoal, 'id'>) })))); }, [familyId]);
-  useEffect(() => { if (!uid) return; return onSnapshot(portfolioDoc(uid), snap => { const data = snap.data() as { holdings?: Holding[] } | undefined; setHoldings(Array.isArray(data?.holdings) ? data!.holdings : []); }); }, [uid]);
-
-  // Source of truth for the current user's linked investments. This also repairs older/stale
-  // family-goal documents when the user opens Family Goals, so a previous failed save cannot
-  // leave progress permanently stale.
-  useEffect(() => {
-    if (!uid || !familyId || !goals.length) return;
-    const values = new Map<string, number>();
-    holdings.forEach(h => {
-      if (h.goalId && h.goalScope === 'family' && h.goalFamilyId === familyId) {
-        values.set(h.goalId, (values.get(h.goalId) || 0) + Math.max(0, Number(h.currentValue) || ((Number(h.units) || 0) * (Number(h.currentPrice) || 0))));
-      }
-    });
-    const candidates = goals.filter(g => values.has(g.id) || Number(g.investmentContributions?.[uid] || 0) > 0);
-    if (!candidates.length) return;
-    let cancelled = false;
-    const reconcile = async () => {
-      try {
-        await runTransaction(firestore, async transaction => {
-          const refs = candidates.map(g => goalDoc(familyId, g.id));
-          const snaps = await Promise.all(refs.map(ref => transaction.get(ref)));
-          if (cancelled) return;
-          snaps.forEach((snap, index) => {
-            if (!snap.exists()) return;
-            const data = snap.data() as FamilyGoal;
-            const investmentContributions = { ...(data.investmentContributions || {}) };
-            const nextValue = Math.max(0, Number(values.get(candidates[index].id) || 0));
-            if (nextValue > 0) investmentContributions[uid] = nextValue;
-            else delete investmentContributions[uid];
-            const currentAmount = totalContributions(data.contributions || {}, investmentContributions);
-            const oldValue = Number(data.investmentContributions?.[uid] || 0);
-            const oldCurrent = Number(data.currentAmount || 0);
-            if (Math.abs(oldValue - nextValue) > 0.01 || Math.abs(oldCurrent - currentAmount) > 0.01) transaction.update(refs[index], { investmentContributions, currentAmount, updatedAt: Date.now() });
-          });
-        });
-      } catch (error) { console.error('Family goal investment reconciliation failed:', error); }
-    };
-    void reconcile();
-    return () => { cancelled = true; };
-  }, [uid, familyId, goals, holdings]);
 
   const sortedGoals = useMemo(() => [...goals].sort((a, b) => (a.targetDate || '').localeCompare(b.targetDate || '')), [goals]);
   const startNew = () => { setEditing(null); setDraft({ name: '', targetAmount: '', targetDate: '', monthlyContribution: '', type: 'savings', expectedAnnualReturn: '8' }); setOpen(true); setMessage(''); };
@@ -78,7 +37,11 @@ export function FamilyGoals({ familyId, familyName = 'Our Family', members = {} 
     if (!name || !Number.isFinite(targetAmount) || targetAmount <= 0 || !draft.targetDate || !Number.isFinite(monthlyContribution) || monthlyContribution < 0 || !uid) { setMessage('Enter a goal name, target, date and monthly contribution.'); return; }
     if (draft.type === 'investment' && (!Number.isFinite(Number(draft.expectedAnnualReturn)) || Number(draft.expectedAnnualReturn) < 0 || Number(draft.expectedAnnualReturn) > 50)) { setMessage('Expected return must be between 0% and 50%.'); return; }
     setBusy(true); setMessage('');
-    try { const id = editing || makeId(name); const existing = editing ? goals.find(g => g.id === editing) : undefined; await setDoc(goalDoc(familyId, id), { name, targetAmount, targetDate: draft.targetDate, monthlyContribution, type: draft.type, expectedAnnualReturn, createdBy: existing?.createdBy || uid, createdAt: existing?.createdAt || Date.now(), currentAmount: existing?.currentAmount || 0, contributions: existing?.contributions || {}, investmentContributions: existing?.investmentContributions || {}, contributorNames: existing?.contributorNames || {}, updatedAt: Date.now() }, { merge: true }); setOpen(false); setEditing(null); setMessage(editing ? 'Family goal updated.' : 'Family goal created.'); } catch (e: any) { setMessage(e?.message || 'Could not save the family goal.'); } finally { setBusy(false); }
+    try {
+      const id = editing || makeId(name); const existing = editing ? goals.find(g => g.id === editing) : undefined;
+      await setDoc(goalDoc(familyId, id), { name, targetAmount, targetDate: draft.targetDate, monthlyContribution, type: draft.type, expectedAnnualReturn, createdBy: existing?.createdBy || uid, createdAt: existing?.createdAt || Date.now(), currentAmount: existing?.currentAmount || 0, contributions: existing?.contributions || {}, investmentContributions: existing?.investmentContributions || {}, contributorNames: existing?.contributorNames || {}, updatedAt: Date.now() }, { merge: true });
+      setOpen(false); setEditing(null); setMessage(editing ? 'Family goal updated.' : 'Family goal created.');
+    } catch (e: any) { setMessage(e?.message || 'Could not save the family goal.'); } finally { setBusy(false); }
   };
   const removeGoal = async (goal: FamilyGoal) => { if (!confirm(`Delete the ${goal.name} family goal? Contributions already made will no longer be shown in AHVIQ.`)) return; setBusy(true); try { await deleteDoc(goalDoc(familyId, goal.id)); setMessage('Family goal deleted.'); } catch (e: any) { setMessage(e?.message || 'Could not delete the goal.'); } finally { setBusy(false); } };
 
