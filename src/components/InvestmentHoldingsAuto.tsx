@@ -13,6 +13,13 @@ const EMPTY: Draft = { assetType: 'mutual-fund', name: '', schemeCode: '', units
 const COLORS = ['#4f46e5', '#0891b2', '#0d9488', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#64748b'];
 const idFor = (prefix: string, value: string) => `${prefix}-${value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'item'}-${Date.now()}`;
 
+const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = []) => goals.map(goal => {
+  const wasLinked = previousHoldings.some(h => h.goalId === goal.id);
+  const linked = nextHoldings.filter(h => h.goalId === goal.id);
+  if (!linked.length) return wasLinked ? { ...goal, currentAmount: 0 } : goal;
+  return { ...goal, currentAmount: linked.reduce((sum, h) => sum + (Number(h.currentValue) || 0), 0) };
+});
+
 export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
   const holdings = config.holdings || [];
   const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);
@@ -87,8 +94,10 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     if (draft.mode === 'purchase') { if (!Number.isFinite(invested) || invested <= 0) return; units = invested / price; }
     if (!Number.isFinite(units) || units <= 0 || !Number.isFinite(invested) || invested < 0) return;
     const item: InvestmentHolding = { id: editingHoldingId || idFor('holding', name), assetType: draft.assetType, name, ...(draft.schemeCode ? { schemeCode: draft.schemeCode } : {}), units, investedAmount: invested, currentPrice: price, currentValue: units * price, lastUpdatedAt: Date.now(), ...(draft.navDate ? { navDate: draft.navDate } : {}), source: draft.assetType === 'mutual-fund' && draft.schemeCode ? 'automatic' : 'manual', goalId: draft.goalId || undefined };
+    const nextHoldings = editingHoldingId ? holdings.map(h => h.id === editingHoldingId ? item : h) : [...holdings, item];
+    const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
     setSaving(true);
-    try { await onSave({ ...config, holdings: editingHoldingId ? holdings.map(h => h.id === editingHoldingId ? item : h) : [...holdings, item] }); closeHolding(); }
+    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); closeHolding(); }
     finally { setSaving(false); }
   };
 
@@ -102,7 +111,9 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
       const latest = Array.isArray(data?.data) ? data.data.find((x: any) => Number(x?.nav) > 0) : null;
       if (!latest) throw new Error();
       const price = Number(latest.nav);
-      await onSave({ ...config, holdings: holdings.map(x => x.id === h.id ? { ...x, currentPrice: price, currentValue: x.units * price, lastUpdatedAt: Date.now(), navDate: String(latest.date || ''), source: 'automatic' as const } : x) });
+      const nextHoldings = holdings.map(x => x.id === h.id ? { ...x, currentPrice: price, currentValue: x.units * price, lastUpdatedAt: Date.now(), navDate: String(latest.date || ''), source: 'automatic' as const } : x);
+      const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
+      await onSave({ ...config, holdings: nextHoldings, goals: nextGoals });
     } catch { window.alert('Could not refresh this NAV right now.'); }
     finally { setSaving(false); }
   };
@@ -110,7 +121,10 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
   const removeHolding = async (id: string) => {
     const h = holdings.find(x => x.id === id);
     if (!h || !window.confirm(`Remove ${h.name} from holdings?`)) return;
-    setSaving(true); try { await onSave({ ...config, holdings: holdings.filter(x => x.id !== id) }); } finally { setSaving(false); }
+    const nextHoldings = holdings.filter(x => x.id !== id);
+    const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
+    setSaving(true);
+    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); } finally { setSaving(false); }
   };
 
   const openCategoryCreate = () => { setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '' }); setCategoryOpen(true); };
@@ -161,7 +175,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
       <div className="mt-4 grid grid-cols-2 gap-3"><div><label className="text-xs font-semibold text-slate-600">Units</label><input type="number" min="0" step="0.0001" value={draft.units} onChange={e => setDraft(d => ({ ...d, units: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></div><div><label className="text-xs font-semibold text-slate-600">Current {draft.assetType === 'mutual-fund' ? 'NAV' : 'price'}</label><div className="relative"><input type="number" min="0" step="0.0001" value={draft.currentPrice} onChange={e => setDraft(d => ({ ...d, currentPrice: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" />{navLoading && <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-indigo-500" />}</div></div></div>
       <div className="mt-3 grid grid-cols-2 gap-3"><div><label className="text-xs font-semibold text-slate-600">Invested amount</label><input type="number" min="0" step="0.01" value={draft.investedAmount} onChange={e => setDraft(d => ({ ...d, investedAmount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></div><div><label className="text-xs font-semibold text-slate-600">NAV / price date</label><input value={draft.navDate} onChange={e => setDraft(d => ({ ...d, navDate: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="DD-MM-YYYY" /></div></div>
       {!editingHoldingId && <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setDraft(d => ({ ...d, mode: 'existing' }))} className={`rounded-lg px-3 py-2 text-xs font-semibold ${draft.mode === 'existing' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Enter units</button><button type="button" onClick={() => setDraft(d => ({ ...d, mode: 'purchase' }))} className={`rounded-lg px-3 py-2 text-xs font-semibold ${draft.mode === 'purchase' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Enter purchase amount</button></div>}
-      {goals.length > 0 && <label className="mt-4 block text-xs font-semibold text-slate-600">Link to investment goal<select value={draft.goalId} onChange={e => setDraft(d => ({ ...d, goalId: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">No goal</option>{goals.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>}
+      {goals.length > 0 && <label className="mt-4 block text-xs font-semibold text-slate-600">Tag to investment goal<select value={draft.goalId} onChange={e => setDraft(d => ({ ...d, goalId: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">No goal</option>{goals.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select><span className="mt-1 block text-[10px] font-normal text-slate-400">The holding's current value will automatically count toward this goal.</span></label>}
       <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeHolding} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving || navLoading} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving && <Loader2 className="h-4 w-4 animate-spin" />}Save holding</button></div></form></div>}
 
     {categoryOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) closeCategory(); }}><form onSubmit={saveCategory} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-900">{editingCategoryId ? 'Edit investment category' : 'Add investment category'}</h3><p className="text-xs text-slate-500">PPF, NPS, bonds, gold or any future category.</p></div><button type="button" onClick={closeCategory} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-5 block text-xs font-semibold text-slate-600">Category name<input required value={categoryDraft.label} onChange={e => setCategoryDraft(d => ({ ...d, label: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="e.g. PPF" /></label><label className="mt-3 block text-xs font-semibold text-slate-600">Current value<input required type="number" min="0" step="0.01" value={categoryDraft.amount} onChange={e => setCategoryDraft(d => ({ ...d, amount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="0" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeCategory} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving...' : 'Save category'}</button></div></form></div>}
