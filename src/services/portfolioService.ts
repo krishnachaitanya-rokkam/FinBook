@@ -40,7 +40,6 @@ export function getEffectivePortfolioFields(config: PortfolioConfig): PortfolioF
     if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;
     const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';
     const matching = holdings.filter(item => item.assetType === assetType);
-    if (!matching.length) return field;
     return {
       ...field,
       amount: matching.reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0),
