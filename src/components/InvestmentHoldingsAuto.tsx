@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collection, doc, onSnapshot } from 'firebase/firestore';
+import { collection, doc, onSnapshot, runTransaction } from 'firebase/firestore';
 import { BarChart3, ChevronDown, Loader2, Pencil, Plus, RefreshCw, Search, ShieldCheck, Trash2, X } from 'lucide-react';
 import { InvestmentHolding, PortfolioConfig, PortfolioField, GoalScope, getEffectivePortfolioFields, getHoldingAssetType } from '../services/portfolioService';
 import { firebaseAuth, firestore } from '../services/firebase';
@@ -12,10 +12,12 @@ type Fund = { schemeCode: string; schemeName: string };
 type FamilyGoal = { id: string; name: string; targetAmount: number; currentAmount?: number; type?: 'savings' | 'investment' };
 type GoalOption = { id: string; name: string; scope: GoalScope; familyId?: string };
 type Draft = { assetType: AssetType; name: string; schemeCode: string; units: string; investedAmount: string; currentPrice: string; navDate: string; goalId: string; goalScope?: GoalScope; goalFamilyId?: string; mode: Mode };
+type GoalDoc = { contributions?: Record<string, number>; investmentContributions?: Record<string, number>; currentAmount?: number };
 
 const EMPTY: Draft = { assetType: 'mutual-fund', name: '', schemeCode: '', units: '', investedAmount: '', currentPrice: '', navDate: '', goalId: '', goalScope: undefined, goalFamilyId: undefined, mode: 'existing' };
 const COLORS = ['#4f46e5', '#0891b2', '#0d9488', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#64748b'];
 const idFor = (prefix: string, value: string) => `${prefix}-${value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'item'}-${Date.now()}`;
+const familyGoalDoc = (familyId: string, goalId: string) => doc(firestore, 'families', familyId, 'goals', goalId);
 
 const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = [], previousFields: PortfolioField[] = [], nextFields: PortfolioField[] = []) => goals.map(goal => {
   const wasLinked = previousHoldings.some(h => h.goalId === goal.id && h.goalScope !== 'family') || previousFields.some(f => !getHoldingAssetType(f) && f.goalId === goal.id && f.goalScope !== 'family');
@@ -77,6 +79,33 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     }, () => { setFamilyGoals([]); setFamilyGoalsLoading(false); });
   }, [familyId]);
 
+  const syncFamilyGoalInvestments = async (previousHoldings: InvestmentHolding[], nextHoldings: InvestmentHolding[]) => {
+    if (!uid || !familyId) return;
+    const goalIds = Array.from(new Set([
+      ...previousHoldings.filter(h => h.goalScope === 'family' && h.goalFamilyId === familyId && h.goalId).map(h => h.goalId as string),
+      ...nextHoldings.filter(h => h.goalScope === 'family' && h.goalFamilyId === familyId && h.goalId).map(h => h.goalId as string),
+    ]));
+    if (!goalIds.length) return;
+    for (const goalId of goalIds) {
+      const myInvestmentValue = nextHoldings
+        .filter(h => h.goalId === goalId && h.goalScope === 'family' && h.goalFamilyId === familyId)
+        .reduce((sum, h) => sum + Math.max(0, Number(h.currentValue) || 0), 0);
+      await runTransaction(firestore, async transaction => {
+        const ref = familyGoalDoc(familyId, goalId);
+        const snap = await transaction.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data() as GoalDoc;
+        const investmentContributions = { ...(data.investmentContributions || {}) };
+        if (myInvestmentValue > 0) investmentContributions[uid] = myInvestmentValue;
+        else delete investmentContributions[uid];
+        const contributions = data.contributions || {};
+        const manualAndTransactionTotal = Object.values(contributions).reduce((sum, amount) => sum + Math.max(0, Number(amount) || 0), 0);
+        const investmentTotal = Object.values(investmentContributions).reduce((sum, amount) => sum + Math.max(0, Number(amount) || 0), 0);
+        transaction.update(ref, { investmentContributions, currentAmount: manualAndTransactionTotal + investmentTotal, updatedAt: Date.now() });
+      });
+    }
+  };
+
   const selectGoal = (value: string, setter: React.Dispatch<React.SetStateAction<Draft>>) => {
     const selected = goalOptions.find(g => g.id === value);
     setter(d => ({ ...d, goalId: value, goalScope: selected?.scope, goalFamilyId: selected?.scope === 'family' ? selected.familyId : undefined }));
@@ -134,7 +163,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     const nextHoldings = editingHoldingId ? holdings.map(h => h.id === editingHoldingId ? item : h) : [...holdings, item];
     const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings, customFields, customFields);
     setSaving(true);
-    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); closeHolding(); }
+    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); await syncFamilyGoalInvestments(holdings, nextHoldings); closeHolding(); }
     finally { setSaving(false); }
   };
 
@@ -151,6 +180,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
       const nextHoldings = holdings.map(x => x.id === h.id ? { ...x, currentPrice: price, currentValue: x.units * price, lastUpdatedAt: Date.now(), navDate: String(latest.date || ''), source: 'automatic' as const } : x);
       const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
       await onSave({ ...config, holdings: nextHoldings, goals: nextGoals });
+      await syncFamilyGoalInvestments(holdings, nextHoldings);
     } catch { window.alert('Could not refresh this NAV right now.'); }
     finally { setSaving(false); }
   };
@@ -161,7 +191,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     const nextHoldings = holdings.filter(x => x.id !== id);
     const nextGoals = syncGoalProgress(config.goals, holdings, nextHoldings);
     setSaving(true);
-    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); } finally { setSaving(false); }
+    try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); await syncFamilyGoalInvestments(holdings, nextHoldings); } finally { setSaving(false); }
   };
 
   const openCategoryCreate = () => { setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '', goalId: '', goalScope: undefined, goalFamilyId: undefined }); setCategoryOpen(true); };
@@ -183,7 +213,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     if (!f || !window.confirm(`Remove ${f.label} from investments?`)) return;
     const nextFields = customFields.filter(x => x.id !== id);
     const nextGoals = syncGoalProgress(config.goals, holdings, holdings, customFields, nextFields);
-    setSaving(true); try { await onSave({ ...config, fields: nextFields, goals: nextGoals }); } finally { setSaving(false); }
+    setSaving(true); try { await onSave({ ...config, fields: nextFields, goals: nextGoals }); closeCategory(); } finally { setSaving(false); }
   };
 
   const goalSelector = (value: string, onChange: (value: string) => void, scope?: GoalScope) => <>
@@ -227,10 +257,10 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
       <div className="mt-3 grid grid-cols-2 gap-3"><div><label className="text-xs font-semibold text-slate-600">Invested amount</label><input type="number" min="0" step="0.01" value={draft.investedAmount} onChange={e => setDraft(d => ({ ...d, investedAmount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" /></div><div><label className="text-xs font-semibold text-slate-600">NAV / price date</label><input value={draft.navDate} onChange={e => setDraft(d => ({ ...d, navDate: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="DD-MM-YYYY" /></div></div>
       {!editingHoldingId && <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1"><button type="button" onClick={() => setDraft(d => ({ ...d, mode: 'existing' }))} className={`rounded-lg px-3 py-2 text-xs font-semibold ${draft.mode === 'existing' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Enter units</button><button type="button" onClick={() => setDraft(d => ({ ...d, mode: 'purchase' }))} className={`rounded-lg px-3 py-2 text-xs font-semibold ${draft.mode === 'purchase' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>Enter purchase amount</button></div>}
       <label className="mt-4 block text-xs font-semibold text-slate-600">Tag to goal{goalSelector(draft.goalId, value => selectGoal(value, setDraft), draft.goalScope)}</label>
-      <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeHolding} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving || navLoading} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving && <Loader2 className="h-4 w-4 animate-spin" />}Save holding</button></div></form></div>}
+      <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeHolding} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving || navLoading} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving && <Loader2 className="h-4 w-4 animate-spin text-white" />}Save holding</button></div></form></div>}
 
-    {categoryOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) closeCategory(); }}><form onSubmit={saveCategory} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-900">{editingCategoryId ? 'Edit investment category' : 'Add investment category'}</h3><p className="text-xs text-slate-500">PPF, NPS, bonds, gold or any future category.</p></div><button type="button" onClick={closeCategory} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-5 block text-xs font-semibold text-slate-600">Category name<input required value={categoryDraft.label} onChange={e => setCategoryDraft(d => ({ ...d, label: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="e.g. PPF" /></label><label className="mt-3 block text-xs font-semibold text-slate-600">Current value<input required type="number" min="0" step="0.01" value={categoryDraft.amount} onChange={e => setCategoryDraft(d => ({ ...d, amount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="0" />
-      <label className="mt-3 block text-xs font-semibold text-slate-600">Tag to goal{goalSelector(categoryDraft.goalId, selectCategoryGoal, categoryDraft.goalScope)}</label></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeCategory} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving...' : 'Save category'}</button></div></form></div>}
+    {categoryOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) closeCategory(); }}><form onSubmit={saveCategory} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-900">{editingCategoryId ? 'Edit investment category' : 'Add investment category'}</h3><p className="text-xs text-slate-500">PPF, NPS, bonds, gold or any future category.</p></div><button type="button" onClick={closeCategory} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-5 block text-xs font-semibold text-slate-600">Category name<input required value={categoryDraft.label} onChange={e => setCategoryDraft(d => ({ ...d, label: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="e.g. PPF" /></label><label className="mt-3 block text-xs font-semibold text-slate-600">Current value<input required type="number" min="0" step="0.01" value={categoryDraft.amount} onChange={e => setCategoryDraft(d => ({ ...d, amount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="0" /><span className="mt-1 block text-[10px] font-normal text-slate-400">Enter the current value of this investment.</span></label>
+      <label className="mt-3 block text-xs font-semibold text-slate-600">Tag to goal{goalSelector(categoryDraft.goalId, selectCategoryGoal, categoryDraft.goalScope)}</label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeCategory} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving...' : 'Save category'}</button></div></form></div>}
   </>;
 };
 
