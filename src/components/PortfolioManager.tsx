@@ -8,7 +8,7 @@ import { GoalPlanningCards } from './GoalPlanningCards';
 import { FamilyGoalContribution } from './FamilyGoalContribution';
 import { GoalIntelligence } from './GoalIntelligence';
 import { WealthAllocation } from './WealthAllocation';
-import { InvestmentHoldings } from './InvestmentHoldings';
+import { InvestmentHoldingsAuto } from './InvestmentHoldingsAuto';
 
 interface PortfolioManagerProps { config: PortfolioConfig; onSave: (config: PortfolioConfig) => Promise<void>; }
 
@@ -105,7 +105,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
 
   return <>
     <PortfolioManagerCore config={config} onSave={onSave} />
-    {portfolioVisible && <InvestmentHoldings config={config} onSave={onSave} />}
+    {portfolioVisible && <InvestmentHoldingsAuto config={config} onSave={onSave} />}
     {netWorthVisible && <WealthAllocation config={config} />}
     {goalsVisible && <>
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
