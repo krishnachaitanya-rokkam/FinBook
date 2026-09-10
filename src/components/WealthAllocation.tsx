@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Landmark, Target, TrendingUp, WalletCards } from 'lucide-react';
-import { PortfolioConfig, getEffectivePortfolioFields } from '../services/portfolioService';
+import { PortfolioConfig, getEffectivePortfolioFields, getHoldingAssetType } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 
 interface Props { config: PortfolioConfig; }
@@ -18,14 +18,27 @@ const BarRow = ({ label, amount, total, icon: Icon, tone }: { label: string; amo
 
 export const WealthAllocation: React.FC<Props> = ({ config }) => {
   const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);
+  const rawFields = config.fields || [];
+  const holdings = config.holdings || [];
   const items = config.netWorthItems || [];
-  const goals = config.goals || [];
   const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);
   const otherAssets = useMemo(() => items.filter(item => item.kind === 'asset').reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [items]);
   const liabilities = useMemo(() => items.filter(item => item.kind === 'liability').reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [items]);
   const totalAssets = portfolioTotal + otherAssets;
   const netWorth = totalAssets - liabilities;
-  const goalLinkedInvestments = useMemo(() => Math.min(portfolioTotal, goals.filter(goal => goal.type === 'investment').reduce((sum, goal) => sum + Math.max(0, Number(goal.currentAmount) || 0), 0)), [goals, portfolioTotal]);
+
+  // Calculate goal-linked investments from the actual portfolio links rather than
+  // relying on goal.currentAmount. This keeps the allocation live for both
+  // personal and family goals and avoids double-counting MF/stock category fields.
+  const goalLinkedInvestments = useMemo(() => {
+    const linkedHoldingValue = holdings
+      .filter(holding => Boolean(holding.goalId))
+      .reduce((sum, holding) => sum + Math.max(0, Number(holding.currentValue) || 0), 0);
+    const linkedOtherInvestmentValue = rawFields
+      .filter(field => Boolean(field.goalId) && !getHoldingAssetType(field))
+      .reduce((sum, field) => sum + Math.max(0, Number(field.amount) || 0), 0);
+    return Math.min(portfolioTotal, linkedHoldingValue + linkedOtherInvestmentValue);
+  }, [holdings, rawFields, portfolioTotal]);
   const unallocatedInvestments = Math.max(0, portfolioTotal - goalLinkedInvestments);
 
   if (totalAssets <= 0 && liabilities <= 0) return null;
@@ -43,6 +56,6 @@ export const WealthAllocation: React.FC<Props> = ({ config }) => {
       <BarRow label="Other assets" amount={otherAssets} total={totalAssets} icon={Landmark} tone="text-emerald-600" />
       {liabilities > 0 && <BarRow label="Liabilities" amount={liabilities} total={Math.max(totalAssets, liabilities)} icon={WalletCards} tone="text-rose-600" />}
     </div>
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5"><p className="text-[11px] leading-5 text-slate-500">Goal-linked investments are based on the current amounts recorded against investment goals. The allocation bars are mutually exclusive, so total assets are not double-counted.</p></div>
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5"><p className="text-[11px] leading-5 text-slate-500">Goal-linked investments are calculated directly from investments tagged to a personal or family goal. Mutual funds and stocks are counted from their live holdings, while Other Investments use their current value.</p></div>
   </section>;
 };
