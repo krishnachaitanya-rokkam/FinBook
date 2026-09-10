@@ -13,11 +13,13 @@ const EMPTY: Draft = { assetType: 'mutual-fund', name: '', schemeCode: '', units
 const COLORS = ['#4f46e5', '#0891b2', '#0d9488', '#16a34a', '#d97706', '#db2777', '#7c3aed', '#64748b'];
 const idFor = (prefix: string, value: string) => `${prefix}-${value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-') || 'item'}-${Date.now()}`;
 
-const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = []) => goals.map(goal => {
+const syncGoalProgress = (goals: PortfolioConfig['goals'] = [], previousHoldings: InvestmentHolding[] = [], nextHoldings: InvestmentHolding[] = [], nextFields: PortfolioField[] = []) => goals.map(goal => {
   const wasLinked = previousHoldings.some(h => h.goalId === goal.id);
   const linked = nextHoldings.filter(h => h.goalId === goal.id);
-  if (!linked.length) return wasLinked ? { ...goal, currentAmount: 0 } : goal;
-  return { ...goal, currentAmount: linked.reduce((sum, h) => sum + (Number(h.currentValue) || 0), 0) };
+  const linkedFields = nextFields.filter(f => !getHoldingAssetType(f) && f.goalId === goal.id);
+  const linkedAmount = linked.reduce((sum, h) => sum + (Number(h.currentValue) || 0), 0) + linkedFields.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+  if (!linked.length && !linkedFields.length) return wasLinked ? { ...goal, currentAmount: 0 } : goal;
+  return { ...goal, currentAmount: linkedAmount };
 });
 
 export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
@@ -27,7 +29,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
   const mutualFunds = useMemo(() => holdings.filter(h => h.assetType === 'mutual-fund'), [holdings]);
   const stocks = useMemo(() => holdings.filter(h => h.assetType === 'stock'), [holdings]);
   const otherInvestments = useMemo(() => fields.filter(f => !getHoldingAssetType(f)), [fields]);
-  const goals = (config.goals || []).filter(g => g.scope === 'personal' && g.type === 'investment');
+  const goals = (config.goals || []).filter(g => g.scope === 'personal');
   const totals = useMemo(() => holdings.reduce((a, h) => ({ invested: a.invested + (Number(h.investedAmount) || 0), current: a.current + (Number(h.currentValue) || 0) }), { invested: 0, current: 0 }), [holdings]);
   const portfolioTotal = useMemo(() => fields.reduce((s, f) => s + (Number(f.amount) || 0), 0), [fields]);
   const gain = totals.current - totals.invested;
@@ -40,7 +42,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(EMPTY);
-  const [categoryDraft, setCategoryDraft] = useState({ label: '', amount: '' });
+  const [categoryDraft, setCategoryDraft] = useState({ label: '', amount: '', goalId: '' });
   const [saving, setSaving] = useState(false);
   const [funds, setFunds] = useState<Fund[]>([]);
   const [fundsLoading, setFundsLoading] = useState(false);
@@ -127,23 +129,26 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
     try { await onSave({ ...config, holdings: nextHoldings, goals: nextGoals }); } finally { setSaving(false); }
   };
 
-  const openCategoryCreate = () => { setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '' }); setCategoryOpen(true); };
-  const openCategoryEdit = (f: PortfolioField) => { setEditingCategoryId(f.id); setCategoryDraft({ label: f.label, amount: String(f.amount) }); setCategoryOpen(true); };
-  const closeCategory = () => { setCategoryOpen(false); setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '' }); };
+  const openCategoryCreate = () => { setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '', goalId: '' }); setCategoryOpen(true); };
+  const openCategoryEdit = (f: PortfolioField) => { setEditingCategoryId(f.id); setCategoryDraft({ label: f.label, amount: String(f.amount), goalId: f.goalId || '' }); setCategoryOpen(true); };
+  const closeCategory = () => { setCategoryOpen(false); setEditingCategoryId(null); setCategoryDraft({ label: '', amount: '', goalId: '' }); };
   const saveCategory = async (event: React.FormEvent) => {
     event.preventDefault();
     const label = categoryDraft.label.trim();
     const amount = Number(categoryDraft.amount);
     if (!label || !Number.isFinite(amount) || amount < 0) return;
     const next: PortfolioField[] = editingCategoryId
-      ? customFields.map(f => f.id === editingCategoryId ? { ...f, label, amount } : f)
-      : [...customFields, { id: idFor('asset', label), label, amount, color: COLORS[customFields.length % COLORS.length] }];
-    setSaving(true); try { await onSave({ ...config, fields: next }); closeCategory(); } finally { setSaving(false); }
+      ? customFields.map(f => f.id === editingCategoryId ? { ...f, label, amount, goalId: categoryDraft.goalId || undefined } : f)
+      : [...customFields, { id: idFor('asset', label), label, amount, color: COLORS[customFields.length % COLORS.length], goalId: categoryDraft.goalId || undefined }];
+    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, next);
+    setSaving(true); try { await onSave({ ...config, fields: next, goals: nextGoals }); closeCategory(); } finally { setSaving(false); }
   };
   const removeCategory = async (id: string) => {
     const f = customFields.find(x => x.id === id);
     if (!f || !window.confirm(`Remove ${f.label} from investments?`)) return;
-    setSaving(true); try { await onSave({ ...config, fields: customFields.filter(x => x.id !== id) }); } finally { setSaving(false); }
+    const nextFields = customFields.filter(x => x.id !== id);
+    const nextGoals = syncGoalProgress(config.goals, holdings, holdings, nextFields);
+    setSaving(true); try { await onSave({ ...config, fields: nextFields, goals: nextGoals }); } finally { setSaving(false); }
   };
 
   return <>
@@ -178,7 +183,7 @@ export const InvestmentHoldingsAuto: React.FC<Props> = ({ config, onSave }) => {
       {goals.length > 0 && <label className="mt-4 block text-xs font-semibold text-slate-600">Tag to investment goal<select value={draft.goalId} onChange={e => setDraft(d => ({ ...d, goalId: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">No goal</option>{goals.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select><span className="mt-1 block text-[10px] font-normal text-slate-400">The holding's current value will automatically count toward this goal.</span></label>}
       <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeHolding} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving || navLoading} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving && <Loader2 className="h-4 w-4 animate-spin" />}Save holding</button></div></form></div>}
 
-    {categoryOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) closeCategory(); }}><form onSubmit={saveCategory} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-900">{editingCategoryId ? 'Edit investment category' : 'Add investment category'}</h3><p className="text-xs text-slate-500">PPF, NPS, bonds, gold or any future category.</p></div><button type="button" onClick={closeCategory} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-5 block text-xs font-semibold text-slate-600">Category name<input required value={categoryDraft.label} onChange={e => setCategoryDraft(d => ({ ...d, label: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="e.g. PPF" /></label><label className="mt-3 block text-xs font-semibold text-slate-600">Current value<input required type="number" min="0" step="0.01" value={categoryDraft.amount} onChange={e => setCategoryDraft(d => ({ ...d, amount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="0" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeCategory} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving...' : 'Save category'}</button></div></form></div>}
+    {categoryOpen && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/45 p-4" role="dialog" aria-modal="true" onMouseDown={e => { if (e.target === e.currentTarget) closeCategory(); }}><form onSubmit={saveCategory} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-lg font-bold text-slate-900">{editingCategoryId ? 'Edit investment category' : 'Add investment category'}</h3><p className="text-xs text-slate-500">PPF, NPS, bonds, gold or any future category.</p></div><button type="button" onClick={closeCategory} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button></div><label className="mt-5 block text-xs font-semibold text-slate-600">Category name<input required value={categoryDraft.label} onChange={e => setCategoryDraft(d => ({ ...d, label: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="e.g. PPF" /></label><label className="mt-3 block text-xs font-semibold text-slate-600">Current value<input required type="number" min="0" step="0.01" value={categoryDraft.amount} onChange={e => setCategoryDraft(d => ({ ...d, amount: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" placeholder="0" /><label className="mt-3 block text-xs font-semibold text-slate-600">Tag to goal<select value={categoryDraft.goalId} onChange={e => setCategoryDraft(d => ({ ...d, goalId: e.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"><option value="">No goal</option>{(config.goals || []).filter(g => g.scope === "personal").map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select><span className="mt-1 block text-[10px] font-normal text-slate-400">This investment value will count toward the selected goal.</span></label></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={closeCategory} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600">Cancel</button><button type="submit" disabled={saving} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? 'Saving...' : 'Save category'}</button></div></form></div>}
   </>;
 };
 
