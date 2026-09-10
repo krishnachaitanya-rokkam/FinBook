@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Landmark, Target, TrendingUp, WalletCards } from 'lucide-react';
-import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';
+import { PortfolioConfig, getEffectivePortfolioFields } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 
 interface Props { config: PortfolioConfig; }
@@ -17,7 +17,7 @@ const BarRow = ({ label, amount, total, icon: Icon, tone }: { label: string; amo
 };
 
 export const WealthAllocation: React.FC<Props> = ({ config }) => {
-  const fields = config.fields || [];
+  const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);
   const items = config.netWorthItems || [];
   const goals = config.goals || [];
   const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);

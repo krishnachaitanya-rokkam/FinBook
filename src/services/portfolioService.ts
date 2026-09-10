@@ -33,6 +33,25 @@ export interface FinancialGoal {
   familyName?: string;
 }
 export interface PortfolioConfig { fields: PortfolioField[]; netWorthItems?: NetWorthItem[]; goals?: FinancialGoal[]; holdings?: InvestmentHolding[]; }
+export function getEffectivePortfolioFields(config: PortfolioConfig): PortfolioField[] {
+  const fields = config.fields || [];
+  const holdings = config.holdings || [];
+  return fields.map(field => {
+    if (field.id !== 'mutual-funds' && field.id !== 'stocks') return field;
+    const assetType = field.id === 'mutual-funds' ? 'mutual-fund' : 'stock';
+    const matching = holdings.filter(item => item.assetType === assetType);
+    if (!matching.length) return field;
+    return {
+      ...field,
+      amount: matching.reduce((sum, item) => sum + (Number(item.currentValue) || 0), 0),
+    };
+  });
+}
+
+export function getEffectivePortfolioTotal(config: PortfolioConfig): number {
+  return getEffectivePortfolioFields(config).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+}
+
 export const DEFAULT_PORTFOLIO_FIELDS: PortfolioField[] = [
   { id: 'ppf', label: 'PPF', amount: 0, color: '#4f46e5' }, { id: 'mutual-funds', label: 'Mutual Funds', amount: 0, color: '#0891b2' }, { id: 'stocks', label: 'Stocks', amount: 0, color: '#0d9488' }, { id: 'epf', label: 'EPF', amount: 0, color: '#16a34a' }, { id: 'nps', label: 'NPS', amount: 0, color: '#d97706' }, { id: 'fixed-deposits', label: 'Fixed Deposits', amount: 0, color: '#db2777' }, { id: 'gold', label: 'Gold', amount: 0, color: '#7c3aed' },
 ];

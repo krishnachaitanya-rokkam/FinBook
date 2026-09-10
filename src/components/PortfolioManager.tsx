@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Plus, ShieldCheck, X } from 'lucide-react';
-import { FinancialGoal, PortfolioConfig } from '../services/portfolioService';
+import { FinancialGoal, PortfolioConfig, getEffectivePortfolioFields } from '../services/portfolioService';
 import { formatCurrency } from '../utils/formatters';
 import { PortfolioManager as PortfolioManagerCore } from './PortfolioManagerCore';
 import { GoalPlanner } from './GoalPlanner';
@@ -23,7 +23,7 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ config, onSa
   const [period, setPeriod] = useState<1 | 3 | 5>(5);
   const [rate, setRate] = useState<8 | 10 | 12>(10);
   const goals = config.goals || [];
-  const fields = config.fields || [];
+  const fields = useMemo(() => getEffectivePortfolioFields(config), [config.fields, config.holdings]);
   const netWorthItems = config.netWorthItems || [];
   const portfolioTotal = useMemo(() => fields.reduce((sum, item) => sum + (Number(item.amount) || 0), 0), [fields]);
   const extraAssets = useMemo(() => netWorthItems.filter(item => item.kind === 'asset').reduce((sum, item) => sum + item.amount, 0), [netWorthItems]);
