@@ -29,8 +29,6 @@ jobs:
           target = "</div>{fields.length === 0 ? <Empty"
           if target not in s:
               raise SystemExit('Could not locate portfolio investments block')
-          # Insert the dedicated holdings component immediately after the portfolio investment list block.
-          # The portfolio block ends just before the first non-portfolio tab branch.
           tab_marker = "{tab === 'networth'"
           idx = s.find(tab_marker)
           if idx < 0:
@@ -41,7 +39,7 @@ jobs:
           PY
           npm install --no-audit --no-fund
           npm run build
-      - name: Commit and remove temporary workflow
+      - name: Commit and clean up
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
