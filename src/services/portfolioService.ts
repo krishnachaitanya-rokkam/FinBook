@@ -1,4 +1,4 @@
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, runTransaction, setDoc } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 export interface PortfolioField { id: string; label: string; amount: number; color: string; goalId?: string; goalScope?: GoalScope; goalFamilyId?: string; }
@@ -66,6 +66,30 @@ export const DEFAULT_PORTFOLIO_FIELDS: PortfolioField[] = [
 ];
 const portfolioDoc = (uid: string) => doc(firestore, 'users', uid, 'portfolio', 'config');
 const normalizeReturn = (value: unknown, type: GoalType) => type === 'investment' ? Math.min(50, Math.max(0, Number.isFinite(Number(value)) ? Number(value) : 8)) : 0;
+
+async function syncFamilyGoalInvestmentValues(transaction: any, uid: string, previousHoldings: InvestmentHolding[], nextHoldings: InvestmentHolding[]) {
+  const keys = Array.from(new Set([
+    ...previousHoldings.filter(h => h.goalScope === 'family' && h.goalFamilyId && h.goalId).map(h => `${h.goalFamilyId}/${h.goalId}`),
+    ...nextHoldings.filter(h => h.goalScope === 'family' && h.goalFamilyId && h.goalId).map(h => `${h.goalFamilyId}/${h.goalId}`),
+  ]));
+  for (const key of keys) {
+    const [familyId, goalId] = key.split('/');
+    const ref = doc(firestore, 'families', familyId, 'goals', goalId);
+    const snap = await transaction.get(ref);
+    if (!snap.exists()) continue;
+    const data = snap.data() as { contributions?: Record<string, number>; investmentContributions?: Record<string, number> };
+    const myInvestmentValue = nextHoldings
+      .filter(h => h.goalScope === 'family' && h.goalFamilyId === familyId && h.goalId === goalId)
+      .reduce((sum, h) => sum + Math.max(0, Number(h.currentValue) || 0), 0);
+    const investmentContributions = { ...(data.investmentContributions || {}) };
+    if (myInvestmentValue > 0) investmentContributions[uid] = myInvestmentValue;
+    else delete investmentContributions[uid];
+    const manualTotal = Object.values(data.contributions || {}).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    const investmentTotal = Object.values(investmentContributions).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    transaction.update(ref, { investmentContributions, currentAmount: manualTotal + investmentTotal, updatedAt: Date.now() });
+  }
+}
+
 export function subscribeToPortfolio(uid: string, onChange: (config: PortfolioConfig) => void, onError?: (error: Error) => void): () => void {
   return onSnapshot(portfolioDoc(uid), snapshot => {
     const data = snapshot.data() as Partial<PortfolioConfig> | undefined;
@@ -89,5 +113,11 @@ export async function savePortfolio(uid: string, config: PortfolioConfig): Promi
   const netWorthItems = (config.netWorthItems || []).map(item => ({ id: item.id, label: item.label.trim(), amount: Number(item.amount) || 0, kind: item.kind, type: item.type }));
   const goals = (config.goals || []).map(goal => ({ id: goal.id, name: goal.name.trim(), targetAmount: Number(goal.targetAmount) || 0, currentAmount: Number(goal.currentAmount) || 0, monthlyContribution: Number(goal.monthlyContribution) || 0, targetDate: goal.targetDate, type: goal.type === 'investment' ? 'investment' : 'savings', scope: goal.scope === 'family' ? 'family' : 'personal', expectedAnnualReturn: normalizeReturn(goal.expectedAnnualReturn, goal.type), ...(goal.familyId ? { familyId: goal.familyId } : {}), ...(goal.familyName ? { familyName: goal.familyName } : {}) }));
   const holdings = (config.holdings || []).map(item => ({ id: item.id, assetType: item.assetType === 'stock' ? 'stock' : 'mutual-fund', name: item.name.trim(), ...(item.schemeCode ? { schemeCode: item.schemeCode } : {}), units: Number(item.units) || 0, investedAmount: Number(item.investedAmount) || 0, currentPrice: Number(item.currentPrice) || 0, currentValue: (Number(item.units) || 0) * (Number(item.currentPrice) || 0), lastUpdatedAt: Number(item.lastUpdatedAt) || Date.now(), ...(item.navDate ? { navDate: item.navDate } : {}), source: item.source === 'automatic' ? 'automatic' : 'manual', ...(item.goalId ? { goalId: item.goalId } : {}), ...(item.goalScope ? { goalScope: item.goalScope } : {}), ...(item.goalFamilyId ? { goalFamilyId: item.goalFamilyId } : {}) }));
-  await setDoc(portfolioDoc(uid), { fields, netWorthItems, goals, holdings });
+  await runTransaction(firestore, async transaction => {
+    const portfolioRef = portfolioDoc(uid);
+    const previousSnap = await transaction.get(portfolioRef);
+    const previousHoldings = previousSnap.exists() && Array.isArray(previousSnap.data()?.holdings) ? previousSnap.data()!.holdings as InvestmentHolding[] : [];
+    transaction.set(portfolioRef, { fields, netWorthItems, goals, holdings });
+    await syncFamilyGoalInvestmentValues(transaction, uid, previousHoldings, holdings);
+  });
 }
