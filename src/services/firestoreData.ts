@@ -33,7 +33,9 @@ function updateFamilyGoalData(data: any, delta: GoalContributionDelta, uid: stri
   contributions[uid] = Math.max(0, (Number(contributions[uid]) || 0) + delta.delta);
   const contributorNames = { ...(data?.contributorNames || {}) } as Record<string, string>;
   contributorNames[uid] = contributorNames[uid] || familyContributorName(uid);
-  const currentAmount = Math.max(0, Object.values(contributions).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0));
+  const manualTotal = Object.values(contributions).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+  const investmentTotal = Object.values((data?.investmentContributions || {}) as Record<string, number>).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+  const currentAmount = manualTotal + investmentTotal;
   const fallbackAmount = Math.max(0, Number(fallbackExpense?.amount) || 0);
   return {
     ...(data || {}),
